@@ -112,7 +112,10 @@ h1, h2, h3, p { margin-top: 0; }
 .sidebar-menu-button { display: none; border: 1px solid #d4d4d4; border-radius: 6px; background: #fff; padding: .45rem .75rem; }
 .app-main, .app-footer { margin-left: 250px; }
 .landing-profile { display: grid; max-width: 980px; min-height: 72vh; grid-template-columns: 180px minmax(0, 1fr); align-content: center; gap: 2.5rem 3rem; }
-.profile-photo { display: grid; aspect-ratio: 1; width: 180px; place-items: center; overflow: hidden; border-radius: 10px; background: linear-gradient(145deg, #151515, #414141); color: #fff; box-shadow: 0 16px 36px rgba(0,0,0,.13); }
+.profile-photo { position: relative; display: grid; aspect-ratio: 1; width: 180px; place-items: center; overflow: hidden; border-radius: 10px; background: #fff; color: #fff; box-shadow: 0 16px 36px rgba(0,0,0,.13); }
+.profile-photo img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 30%; filter: saturate(.88) contrast(1.04); }
+.profile-photo::before { content: ""; position: absolute; inset: 0; z-index: 1; background: linear-gradient(90deg, transparent 0 33%, rgba(24,24,24,.08) 33% 66%, transparent 66%), linear-gradient(180deg, transparent 0 33%, rgba(255,255,255,.09) 33% 66%, transparent 66%); pointer-events: none; }
+.profile-photo::after { content: ""; position: absolute; inset: 0; z-index: 2; background: linear-gradient(90deg, transparent calc(33.333% - 2px), #fff calc(33.333% - 2px) calc(33.333% + 2px), transparent calc(33.333% + 2px) calc(66.666% - 2px), #fff calc(66.666% - 2px) calc(66.666% + 2px), transparent calc(66.666% + 2px)), linear-gradient(180deg, transparent calc(33.333% - 2px), #fff calc(33.333% - 2px) calc(33.333% + 2px), transparent calc(33.333% + 2px) calc(66.666% - 2px), #fff calc(66.666% - 2px) calc(66.666% + 2px), transparent calc(66.666% + 2px)); pointer-events: none; }
 .profile-photo span { font-size: 3.25rem; font-weight: 700; letter-spacing: -.07em; }
 .profile-meta { display: flex; flex-wrap: wrap; gap: .75rem 1.5rem; margin-top: 1.5rem; color: #525252; font-size: .9rem; }
 .profile-meta span::before { content: "•"; margin-right: .5rem; color: #a3a3a3; }
