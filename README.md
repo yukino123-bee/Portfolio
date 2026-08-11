@@ -34,6 +34,8 @@ Start the site:
 composer start
 ```
 
+The start script serves `public/` as the web root so stylesheets and JavaScript are available at `/assets/...`.
+
 Open `http://localhost:8000`. Owner login is at `http://localhost:8000/?page=login`.
 
 ## Documents

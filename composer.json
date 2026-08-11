@@ -15,6 +15,6 @@
         ]
     },
     "scripts": {
-        "start": "php -S localhost:8000 router.php"
+        "start": "php -S localhost:8000 -t public router.php"
     }
 }
