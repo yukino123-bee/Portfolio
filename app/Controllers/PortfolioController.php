@@ -377,7 +377,7 @@ final class PortfolioController
             $published === null ? null : json_encode($published, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
             $id,
         ]);
-        $this->redirect('admin');
+        return 'Upload complete: ' . $originalName . ' is saved and published on the ' . ucfirst($item['type']) . ' page.';
     }
 
     private function uploadWord(): ?string
@@ -433,7 +433,7 @@ final class PortfolioController
             $published === null ? null : json_encode($published, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
             $id,
         ]);
-        $this->redirect('admin');
+        return 'Upload complete: ' . $originalName . ' is saved. Word files are downloadable; upload a PDF to display the document inside the page.';
     }
 
     private function redirect(string $page): never
