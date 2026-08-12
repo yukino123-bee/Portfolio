@@ -370,6 +370,17 @@ html[data-theme="dark"] header.border-b, html[data-theme="dark"] .app-footer { b
   .document-editor-paper { min-height: 0; padding: 24px 18px; }
   .document-editor-contact, .document-editor-row, .document-editor-entry .document-editor-row, .document-editor-skill { grid-template-columns: 1fr; }
   .paper-shell { margin-inline: -16px; border-radius: 0; }
+  .resume-page > .no-print { text-align: center; }
+  .resume-page .paper-shell { margin-inline: 0; padding: 10px; }
+  .paper.resume-source { width: 100%; min-height: 0; padding: 28px 18px; font-size: .92rem; line-height: 1.42; text-align: center; }
+  .resume-source-header h1, .resume-source-headline { font-size: 1.05rem; }
+  .resume-source-section { margin-top: 26px; text-align: center; }
+  .resume-source-section h2 { font-size: .95rem; }
+  .resume-skills { grid-template-columns: 1fr; gap: 2px; }
+  .resume-skills dt { margin-top: 10px; }
+  .resume-projects { padding: 0; list-style-position: inside; }
+  .resume-projects li { margin-bottom: 22px; padding: 0; }
+  .resume-projects li > p:last-child, .resume-activity-detail { margin: 6px 0 0 !important; }
   .imported-pdf-shell { margin-inline: -16px; border-radius: 0; padding: 12px; }
   .imported-pdf-shell iframe { height: 72vh; min-height: 480px; }
   .editor-actions { right: 0; bottom: .5rem; width: 100%; justify-content: stretch; }
