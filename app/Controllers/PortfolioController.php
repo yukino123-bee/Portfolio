@@ -233,15 +233,16 @@ final class PortfolioController
         $file = $_FILES['pdf'] ?? null;
         if (!$file) return 'Choose a PDF file to import.';
         $uploadError = $file['error'] ?? UPLOAD_ERR_NO_FILE;
-        if ($uploadError === UPLOAD_ERR_INI_SIZE || $uploadError === UPLOAD_ERR_FORM_SIZE) return 'The PDF exceeds the server upload limit. Restart the server with composer start and try again.';
+        if ($uploadError === UPLOAD_ERR_INI_SIZE || $uploadError === UPLOAD_ERR_FORM_SIZE) return 'The PDF exceeds this server\'s upload limit. Use a smaller PDF and try again.';
         if ($uploadError === UPLOAD_ERR_PARTIAL) return 'The PDF upload was interrupted. Please try again.';
         if ($uploadError === UPLOAD_ERR_NO_FILE) return 'Choose a PDF file to import.';
         if ($uploadError !== UPLOAD_ERR_OK) return 'The PDF could not be uploaded. Please try again.';
         if (($file['size'] ?? 0) > 15 * 1024 * 1024) return 'The PDF must be 15 MB or smaller.';
 
         $header = file_get_contents($file['tmp_name'], false, null, 0, 5);
-        $mime = class_exists(\finfo::class) ? (new \finfo(FILEINFO_MIME_TYPE))->file($file['tmp_name']) : 'application/pdf';
-        if ($header !== '%PDF-' || $mime !== 'application/pdf') return 'The selected file is not a valid PDF.';
+        // The PDF signature is reliable; shared-host MIME databases frequently return
+        // application/octet-stream for valid PDFs and should not reject the upload.
+        if ($header !== '%PDF-') return 'The selected file is not a valid PDF.';
 
         $statement = db()->prepare("SELECT id,type,draft_data,published_data,is_published FROM content_documents WHERE id=? AND type IN ('resume','reflection') LIMIT 1");
         $statement->execute([$id]);
@@ -279,7 +280,7 @@ final class PortfolioController
         $file = $_FILES['word'] ?? null;
         if (!$file) return 'Choose a Word (.docx) file to import.';
         $uploadError = $file['error'] ?? UPLOAD_ERR_NO_FILE;
-        if ($uploadError === UPLOAD_ERR_INI_SIZE || $uploadError === UPLOAD_ERR_FORM_SIZE) return 'The Word file exceeds the server upload limit. Restart the server with composer start and try again.';
+        if ($uploadError === UPLOAD_ERR_INI_SIZE || $uploadError === UPLOAD_ERR_FORM_SIZE) return 'The Word file exceeds this server\'s upload limit. Use a smaller document and try again.';
         if ($uploadError === UPLOAD_ERR_PARTIAL) return 'The Word upload was interrupted. Please try again.';
         if ($uploadError === UPLOAD_ERR_NO_FILE) return 'Choose a Word (.docx) file to import.';
         if ($uploadError !== UPLOAD_ERR_OK) return 'The Word file could not be uploaded. Please try again.';
