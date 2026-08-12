@@ -93,7 +93,7 @@ final class PortfolioController
             session_destroy();
             $this->redirect('home');
         }
-        if (!in_array($action, ['save','publish','unpublish','delete','create','layout','upload_pdf','upload_word'], true)) return null;
+        if (!in_array($action, ['save','publish','unpublish','delete','create','restore_reflection','layout','upload_pdf','upload_word'], true)) return null;
 
         require_owner();
         verify_csrf();
@@ -120,6 +120,25 @@ final class PortfolioController
             $statement->execute([$type, $slug, $data['title'], json_encode($data)]);
             header('Location: /?page=edit&id=' . db()->lastInsertId());
             exit;
+        }
+        if ($action === 'restore_reflection') {
+            $existing = db()->query("SELECT id FROM content_documents WHERE type='reflection' LIMIT 1")->fetch();
+            if (!$existing) {
+                $samples = require dirname(__DIR__) . '/sample.php';
+                $reflection = null;
+                foreach ($samples as $sample) {
+                    if (($sample['type'] ?? '') === 'reflection') {
+                        $reflection = $sample;
+                        break;
+                    }
+                }
+                if ($reflection) {
+                    $json = json_encode($reflection['data'], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+                    $statement = db()->prepare('INSERT INTO content_documents(type,slug,title,draft_data,published_data,is_published,sort_order,published_at) VALUES(?,?,?,?,?,1,?,NOW())');
+                    $statement->execute(['reflection', $reflection['slug'], $reflection['title'], $json, $json, $reflection['sort_order']]);
+                }
+            }
+            $this->redirect('admin');
         }
 
         $id = $_POST['id'] ?? '';
@@ -171,7 +190,7 @@ final class PortfolioController
             $this->redirect('admin');
         }
         if ($action === 'unpublish') db()->prepare('UPDATE content_documents SET is_published=0 WHERE id=?')->execute([$id]);
-        if ($action === 'delete') db()->prepare("DELETE FROM content_documents WHERE id=? AND type IN ('project','activity','reflection')")->execute([$id]);
+        if ($action === 'delete') db()->prepare("DELETE FROM content_documents WHERE id=? AND type IN ('project','activity')")->execute([$id]);
         $this->redirect('admin');
     }
 
