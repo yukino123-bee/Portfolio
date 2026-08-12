@@ -24,7 +24,11 @@ final class PortfolioController
         }
 
         if (in_array($page, ['admin', 'edit', 'layouts'], true) && !owner_logged_in()) $this->redirect('login');
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') $error = $this->handlePost();
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $error = empty($_POST) && (int) ($_SERVER['CONTENT_LENGTH'] ?? 0) > 0
+                ? 'The upload is larger than the hosting limit of ' . ini_get('post_max_size') . '. Compress the file and try again.'
+                : $this->handlePost();
+        }
         if ($page === 'reflections') {
             $reflection = $this->content->publishedOne('reflection');
             if ($reflection) {
@@ -101,13 +105,12 @@ final class PortfolioController
 
         require_owner();
         verify_csrf();
-        if ($action === 'upload_pdf') return $this->uploadPdf();
-        if ($action === 'upload_word') {
+        if ($action === 'upload_pdf' || $action === 'upload_word') {
             try {
-                return $this->uploadWord();
+                return $action === 'upload_pdf' ? $this->uploadPdf() : $this->uploadWord();
             } catch (\Throwable $exception) {
-                error_log('Word import failed: ' . $exception->getMessage());
-                return 'The Word document could not be imported on this server. Please try a PDF if the problem continues.';
+                error_log('Document import failed: ' . $exception->getMessage());
+                return 'Upload failed: ' . $exception->getMessage();
             }
         }
         if ($action === 'layout') {
@@ -278,14 +281,27 @@ final class PortfolioController
     {
         $data = file_get_contents($temporaryPath);
         if ($data === false) throw new \RuntimeException('Unable to read the uploaded document.');
-        $statement = db()->prepare('INSERT INTO document_uploads(content_id,kind,filename,mime_type,file_data) VALUES(?,?,?,?,?)');
-        $statement->bindValue(1, (int) $contentId, \PDO::PARAM_INT);
-        $statement->bindValue(2, $kind);
-        $statement->bindValue(3, $filename);
-        $statement->bindValue(4, $mime);
-        $statement->bindValue(5, $data, \PDO::PARAM_LOB);
-        $statement->execute();
-        return '/?page=document&id=' . db()->lastInsertId();
+        try {
+            $statement = db()->prepare('INSERT INTO document_uploads(content_id,kind,filename,mime_type,file_data) VALUES(?,?,?,?,?)');
+            $statement->bindValue(1, (int) $contentId, \PDO::PARAM_INT);
+            $statement->bindValue(2, $kind);
+            $statement->bindValue(3, $filename);
+            $statement->bindValue(4, $mime);
+            $statement->bindValue(5, $data, \PDO::PARAM_LOB);
+            $statement->execute();
+            return '/?page=document&id=' . db()->lastInsertId();
+        } catch (\Throwable $databaseError) {
+            $directory = dirname(__DIR__, 2) . '/public/uploads/documents';
+            if (!is_dir($directory) && !mkdir($directory, 0755, true) && !is_dir($directory)) {
+                throw new \RuntimeException('The host rejected database storage and the upload directory is not writable.');
+            }
+            $safeName = $kind . '-' . (int) $contentId . '-' . bin2hex(random_bytes(6)) . ($kind === 'pdf' ? '.pdf' : '.docx');
+            if (file_put_contents($directory . '/' . $safeName, $data, LOCK_EX) === false) {
+                throw new \RuntimeException('The host rejected both database and file storage.');
+            }
+            error_log('Database document storage unavailable: ' . $databaseError->getMessage());
+            return '/uploads/documents/' . $safeName;
+        }
     }
 
     private function serveDocument(): never
@@ -332,7 +348,7 @@ final class PortfolioController
         if ($uploadError === UPLOAD_ERR_PARTIAL) return 'The PDF upload was interrupted. Please try again.';
         if ($uploadError === UPLOAD_ERR_NO_FILE) return 'Choose a PDF file to import.';
         if ($uploadError !== UPLOAD_ERR_OK) return 'The PDF could not be uploaded. Please try again.';
-        if (($file['size'] ?? 0) > 15 * 1024 * 1024) return 'The PDF must be 15 MB or smaller.';
+        if (($file['size'] ?? 0) > 2 * 1024 * 1024) return 'The PDF must be smaller than 2 MB on this host.';
 
         $header = file_get_contents($file['tmp_name'], false, null, 0, 5);
         // The PDF signature is reliable; shared-host MIME databases frequently return
@@ -374,7 +390,7 @@ final class PortfolioController
         if ($uploadError === UPLOAD_ERR_PARTIAL) return 'The Word upload was interrupted. Please try again.';
         if ($uploadError === UPLOAD_ERR_NO_FILE) return 'Choose a Word (.docx) file to import.';
         if ($uploadError !== UPLOAD_ERR_OK) return 'The Word file could not be uploaded. Please try again.';
-        if (($file['size'] ?? 0) > 15 * 1024 * 1024) return 'The Word file must be 15 MB or smaller.';
+        if (($file['size'] ?? 0) > 2 * 1024 * 1024) return 'The Word file must be smaller than 2 MB on this host.';
         if (strtolower(pathinfo((string) ($file['name'] ?? ''), PATHINFO_EXTENSION)) !== 'docx') return 'Only modern Word (.docx) files are supported.';
 
         if (class_exists(\ZipArchive::class)) {
