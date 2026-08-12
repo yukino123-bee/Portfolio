@@ -212,3 +212,18 @@ document.querySelectorAll('.pdf-import-form input[type="file"]').forEach((input)
     if(label)label.textContent=input.files?.[0]?.name||(input.name==='word'?'Import Word (.docx)':'Import PDF');
   });
 });
+
+document.querySelectorAll('a[download]').forEach((link)=>{
+  if(link.textContent.trim()!=='Download uploaded Word file')return;
+  link.closest('p')?.classList.add('document-download-action');
+  link.removeAttribute('href');
+  link.removeAttribute('download');
+  link.setAttribute('role','button');
+  link.setAttribute('tabindex','0');
+  link.textContent='Download PDF';
+  const savePdf=()=>window.print();
+  link.addEventListener('click',savePdf);
+  link.addEventListener('keydown',(event)=>{
+    if(event.key==='Enter'||event.key===' '){event.preventDefault();savePdf();}
+  });
+});
