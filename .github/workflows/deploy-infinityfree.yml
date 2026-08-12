@@ -1,0 +1,80 @@
+name: Deploy to InfinityFree
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: infinityfree-production
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: Validate and deploy
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.2"
+          extensions: pdo_mysql, fileinfo, zip
+          coverage: none
+
+      - name: Validate PHP files
+        shell: bash
+        run: find app public database -name '*.php' -print0 | xargs -0 -n1 php -l
+
+      - name: Build InfinityFree package
+        shell: bash
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+          DB_HOST: ${{ secrets.DB_HOST }}
+          DB_PORT: ${{ secrets.DB_PORT }}
+          DB_NAME: ${{ secrets.DB_NAME }}
+          DB_USER: ${{ secrets.DB_USER }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          OWNER_EMAIL: ${{ secrets.OWNER_EMAIL }}
+          OWNER_PASSWORD: ${{ secrets.OWNER_PASSWORD }}
+        run: |
+          set -euo pipefail
+          mkdir -p .deploy/public/uploads/documents
+          rsync -a app/ .deploy/app/
+          rsync -a --exclude 'uploads/documents/**' public/ .deploy/public/
+          cp .htaccess .deploy/.htaccess
+          touch .deploy/public/uploads/documents/.gitkeep
+          umask 077
+          {
+            printf 'APP_URL=%s\n' "$APP_URL"
+            printf 'DB_HOST=%s\n' "$DB_HOST"
+            printf 'DB_PORT=%s\n' "${DB_PORT:-3306}"
+            printf 'DB_NAME=%s\n' "$DB_NAME"
+            printf 'DB_USER=%s\n' "$DB_USER"
+            printf 'DB_PASSWORD=%s\n' "$DB_PASSWORD"
+            printf 'OWNER_EMAIL=%s\n' "$OWNER_EMAIL"
+            printf 'OWNER_PASSWORD=%s\n' "$OWNER_PASSWORD"
+          } > .deploy/.env
+
+      - name: Upload to InfinityFree htdocs
+        uses: SamKirkland/FTP-Deploy-Action@v4.4.0
+        with:
+          server: ftpupload.net
+          username: ${{ secrets.INFINITYFREE_FTP_USERNAME }}
+          password: ${{ secrets.INFINITYFREE_FTP_PASSWORD }}
+          protocol: ftp
+          port: 21
+          local-dir: ./.deploy/
+          server-dir: /htdocs/
+          dangerous-clean-slate: false
+          exclude: |
+            **/.git*
+            **/.git*/**
+            public/uploads/documents/**

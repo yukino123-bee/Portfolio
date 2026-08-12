@@ -1,5 +1,8 @@
 .env
+.deploy/
 storage/*.log
 storage/*.pdf
+public/uploads/documents/*
+!public/uploads/documents/.gitkeep
 __pycache__/
 .DS_Store

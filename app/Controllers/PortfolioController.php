@@ -19,6 +19,13 @@ final class PortfolioController
 
         if (in_array($page, ['admin', 'edit', 'layouts'], true) && !owner_logged_in()) $this->redirect('login');
         if ($_SERVER['REQUEST_METHOD'] === 'POST') $error = $this->handlePost();
+        if ($page === 'reflections') {
+            $reflection = $this->content->publishedOne('reflection');
+            if ($reflection) {
+                header('Location: /?page=reflection&slug=' . urlencode($reflection['slug']));
+                exit;
+            }
+        }
 
         View::render('portfolio', [
             'page' => $page,
@@ -33,12 +40,15 @@ final class PortfolioController
     private function pageData(string $page, ?string $slug): array
     {
         return match ($page) {
-            'home' => ['system' => $this->content->publishedOne('current_system')['data'] ?? [], 'projects' => $this->content->published('project')],
+            'home' => [],
             'about' => ['system' => $this->content->publishedOne('current_system')['data'] ?? []],
-            'projects', 'activities', 'reflections' => $this->listingData($page),
-            'project', 'activity', 'reflection' => ['item' => $this->content->publishedOne($page, $slug), 'layout' => $this->content->layoutSettings()],
+            'activities' => $this->listingData($page),
+            'activity', 'reflection' => ['item' => $this->content->publishedOne($page, $slug), 'layout' => $this->content->layoutSettings()],
             'resume' => ['item' => $this->content->publishedOne('resume'), 'layout' => $this->content->layoutSettings()],
-            'admin' => ['items' => $this->content->adminContent()],
+            'admin' => ['items' => array_values(array_filter(
+                $this->content->adminContent(),
+                fn (array $item): bool => !in_array($item['type'], ['current_system', 'project'], true)
+            ))],
             'edit' => ['item' => $this->findAdminItem((string) ($_GET['id'] ?? ''))],
             'layouts' => ['layout' => $this->content->layoutSettings()],
             default => [],
@@ -47,7 +57,7 @@ final class PortfolioController
 
     private function listingData(string $page): array
     {
-        $type = ['projects'=>'project','activities'=>'activity','reflections'=>'reflection'][$page];
+        $type = ['activities'=>'activity','reflections'=>'reflection'][$page];
         return ['type' => $type, 'items' => $this->content->published($type)];
     }
 
@@ -81,10 +91,12 @@ final class PortfolioController
             session_destroy();
             $this->redirect('home');
         }
-        if (!in_array($action, ['save','publish','unpublish','delete','create','layout'], true)) return null;
+        if (!in_array($action, ['save','publish','unpublish','delete','create','layout','upload_pdf','upload_word'], true)) return null;
 
         require_owner();
         verify_csrf();
+        if ($action === 'upload_pdf') return $this->uploadPdf();
+        if ($action === 'upload_word') return $this->uploadWord();
         if ($action === 'layout') {
             $statement = db()->prepare('UPDATE document_layouts SET resume_template=?,reflection_template=?,font_family=?,font_size=?,line_height=?,section_spacing=? WHERE id=1');
             $statement->execute([$_POST['resume_template'],$_POST['reflection_template'],$_POST['font_family'],(float)$_POST['font_size'],(float)$_POST['line_height'],(int)$_POST['section_spacing']]);
@@ -103,7 +115,46 @@ final class PortfolioController
 
         $id = $_POST['id'] ?? '';
         if ($action === 'save' || $action === 'publish') {
-            $data = json_decode($_POST['data'] ?? '', true);
+            if (isset($_POST['profile_form'])) {
+                $skills = preg_split('/\s*[,\n]\s*/', trim($_POST['skills'] ?? ''), -1, PREG_SPLIT_NO_EMPTY) ?: [];
+                $data = [
+                    'name' => trim($_POST['name'] ?? ''),
+                    'full_name' => trim($_POST['full_name'] ?? ''),
+                    'role' => trim($_POST['role'] ?? ''),
+                    'location' => trim($_POST['location'] ?? ''),
+                    'availability' => trim($_POST['availability'] ?? ''),
+                    'age' => trim($_POST['age'] ?? ''),
+                    'birthdate' => trim($_POST['birthdate'] ?? ''),
+                    'school' => trim($_POST['school'] ?? ''),
+                    'course_year' => trim($_POST['course_year'] ?? ''),
+                    'dream_job' => trim($_POST['dream_job'] ?? ''),
+                    'intro' => trim($_POST['intro'] ?? ''),
+                    'biography' => trim($_POST['biography'] ?? ''),
+                    'skills' => array_values(array_unique($skills)),
+                ];
+            } elseif (isset($_POST['resume_form'])) {
+                $data = [
+                    'name' => trim($_POST['name'] ?? ''),
+                    'headline' => trim($_POST['headline'] ?? ''),
+                    'email' => trim($_POST['email'] ?? ''),
+                    'phone' => trim($_POST['phone'] ?? ''),
+                    'location' => trim($_POST['location'] ?? ''),
+                    'website' => trim($_POST['website'] ?? ''),
+                    'summary' => trim($_POST['summary'] ?? ''),
+                    'experience' => $this->documentEntries('experience', 'role', 'organization'),
+                    'education' => $this->documentEntries('education', 'degree', 'school'),
+                    'skills' => $this->skillGroups(),
+                ];
+                $this->preserveUploadedPdf($id, $data);
+            } elseif (isset($_POST['reflection_form'])) {
+                $data = [];
+                foreach (['title','date','course','instructor','activity','experience','observations','learning','next_steps','conclusion'] as $field) {
+                    $data[$field] = trim($_POST[$field] ?? '');
+                }
+                $this->preserveUploadedPdf($id, $data);
+            } else {
+                $data = json_decode($_POST['data'] ?? '', true);
+            }
             if (!is_array($data)) return 'Content data must be valid JSON.';
             $statement = db()->prepare('UPDATE content_documents SET title=?,slug=?,sort_order=?,draft_data=? WHERE id=?');
             $statement->execute([trim($_POST['title']),trim($_POST['slug']),(int)$_POST['sort_order'],json_encode($data, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),$id]);
@@ -112,6 +163,148 @@ final class PortfolioController
         }
         if ($action === 'unpublish') db()->prepare('UPDATE content_documents SET is_published=0 WHERE id=?')->execute([$id]);
         if ($action === 'delete') db()->prepare("DELETE FROM content_documents WHERE id=? AND type IN ('project','activity','reflection')")->execute([$id]);
+        $this->redirect('admin');
+    }
+
+    private function documentEntries(string $prefix, string $primary, string $secondary): array
+    {
+        $entries = [];
+        foreach (($_POST[$prefix . '_' . $primary] ?? []) as $index => $value) {
+            $details = preg_split('/\r?\n/', trim($_POST[$prefix . '_details'][$index] ?? ''), -1, PREG_SPLIT_NO_EMPTY) ?: [];
+            $entries[] = [
+                $primary => trim($value),
+                $secondary => trim($_POST[$prefix . '_' . $secondary][$index] ?? ''),
+                'period' => trim($_POST[$prefix . '_period'][$index] ?? ''),
+                'details' => $prefix === 'education' && count($details) <= 1 ? ($details[0] ?? '') : array_values($details),
+            ];
+        }
+        return $entries;
+    }
+
+    private function skillGroups(): array
+    {
+        $groups = [];
+        foreach (($_POST['skill_group'] ?? []) as $index => $group) {
+            $items = preg_split('/\s*[,\n]\s*/', trim($_POST['skill_items'][$index] ?? ''), -1, PREG_SPLIT_NO_EMPTY) ?: [];
+            $groups[] = ['group' => trim($group), 'items' => array_values($items)];
+        }
+        return $groups;
+    }
+
+    private function preserveUploadedPdf(string $id, array &$data): void
+    {
+        $statement = db()->prepare('SELECT draft_data FROM content_documents WHERE id=? LIMIT 1');
+        $statement->execute([$id]);
+        $existing = json_decode((string) ($statement->fetchColumn() ?: ''), true) ?: [];
+        foreach (['uploaded_pdf','uploaded_pdf_name','uploaded_word','uploaded_word_name'] as $key) if (!empty($existing[$key])) $data[$key] = $existing[$key];
+    }
+
+    private function uploadPdf(): ?string
+    {
+        $id = (string) ($_POST['id'] ?? '');
+        $file = $_FILES['pdf'] ?? null;
+        if (!$file) return 'Choose a PDF file to import.';
+        $uploadError = $file['error'] ?? UPLOAD_ERR_NO_FILE;
+        if ($uploadError === UPLOAD_ERR_INI_SIZE || $uploadError === UPLOAD_ERR_FORM_SIZE) return 'The PDF exceeds the server upload limit. Restart the server with composer start and try again.';
+        if ($uploadError === UPLOAD_ERR_PARTIAL) return 'The PDF upload was interrupted. Please try again.';
+        if ($uploadError === UPLOAD_ERR_NO_FILE) return 'Choose a PDF file to import.';
+        if ($uploadError !== UPLOAD_ERR_OK) return 'The PDF could not be uploaded. Please try again.';
+        if (($file['size'] ?? 0) > 15 * 1024 * 1024) return 'The PDF must be 15 MB or smaller.';
+
+        $header = file_get_contents($file['tmp_name'], false, null, 0, 5);
+        $mime = class_exists(\finfo::class) ? (new \finfo(FILEINFO_MIME_TYPE))->file($file['tmp_name']) : 'application/pdf';
+        if ($header !== '%PDF-' || $mime !== 'application/pdf') return 'The selected file is not a valid PDF.';
+
+        $statement = db()->prepare("SELECT id,type,draft_data,published_data,is_published FROM content_documents WHERE id=? AND type IN ('resume','reflection') LIMIT 1");
+        $statement->execute([$id]);
+        $item = $statement->fetch();
+        if (!$item) return 'Only Resume and Reflection entries accept PDF imports.';
+
+        $directory = dirname(__DIR__, 2) . '/public/uploads/documents';
+        if (!is_dir($directory) && !mkdir($directory, 0755, true) && !is_dir($directory)) return 'Unable to create the PDF upload directory.';
+        $filename = $item['type'] . '-' . $item['id'] . '-' . bin2hex(random_bytes(6)) . '.pdf';
+        if (!move_uploaded_file($file['tmp_name'], $directory . '/' . $filename)) return 'Unable to store the uploaded PDF.';
+
+        $path = '/uploads/documents/' . $filename;
+        $originalName = basename((string) ($file['name'] ?? 'document.pdf'));
+        $draft = json_decode($item['draft_data'], true) ?: [];
+        $draft['uploaded_pdf'] = $path;
+        $draft['uploaded_pdf_name'] = $originalName;
+        $published = $item['published_data'] ? (json_decode($item['published_data'], true) ?: []) : null;
+        if ($item['is_published']) {
+            $published ??= $draft;
+            $published['uploaded_pdf'] = $path;
+            $published['uploaded_pdf_name'] = $originalName;
+        }
+        $update = db()->prepare('UPDATE content_documents SET draft_data=?,published_data=? WHERE id=?');
+        $update->execute([
+            json_encode($draft, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
+            $published === null ? null : json_encode($published, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
+            $id,
+        ]);
+        $this->redirect('admin');
+    }
+
+    private function uploadWord(): ?string
+    {
+        $id = (string) ($_POST['id'] ?? '');
+        $file = $_FILES['word'] ?? null;
+        if (!$file) return 'Choose a Word (.docx) file to import.';
+        $uploadError = $file['error'] ?? UPLOAD_ERR_NO_FILE;
+        if ($uploadError === UPLOAD_ERR_INI_SIZE || $uploadError === UPLOAD_ERR_FORM_SIZE) return 'The Word file exceeds the server upload limit. Restart the server with composer start and try again.';
+        if ($uploadError === UPLOAD_ERR_PARTIAL) return 'The Word upload was interrupted. Please try again.';
+        if ($uploadError === UPLOAD_ERR_NO_FILE) return 'Choose a Word (.docx) file to import.';
+        if ($uploadError !== UPLOAD_ERR_OK) return 'The Word file could not be uploaded. Please try again.';
+        if (($file['size'] ?? 0) > 15 * 1024 * 1024) return 'The Word file must be 15 MB or smaller.';
+        if (strtolower(pathinfo((string) ($file['name'] ?? ''), PATHINFO_EXTENSION)) !== 'docx') return 'Only modern Word (.docx) files are supported.';
+
+        $archive = new \ZipArchive();
+        if ($archive->open($file['tmp_name']) !== true || $archive->locateName('[Content_Types].xml') === false || $archive->locateName('word/document.xml') === false) {
+            if ($archive->status === \ZipArchive::ER_OK) $archive->close();
+            return 'The selected file is not a valid Word document.';
+        }
+        $archive->close();
+
+        $statement = db()->prepare("SELECT id,type,draft_data,published_data,is_published FROM content_documents WHERE id=? AND type IN ('resume','reflection') LIMIT 1");
+        $statement->execute([$id]);
+        $item = $statement->fetch();
+        if (!$item) return 'Only Resume and Reflection entries accept Word imports.';
+
+        $directory = dirname(__DIR__, 2) . '/public/uploads/documents';
+        if (!is_dir($directory) && !mkdir($directory, 0755, true) && !is_dir($directory)) return 'Unable to create the document upload directory.';
+        $base = 'word-' . $item['type'] . '-' . $item['id'] . '-' . bin2hex(random_bytes(6));
+        $wordFilename = $base . '.docx';
+        $wordPath = $directory . '/' . $wordFilename;
+        if (!move_uploaded_file($file['tmp_name'], $wordPath)) return 'Unable to store the imported Word document.';
+
+        $profileDirectory = sys_get_temp_dir() . '/portfolio-libreoffice-' . bin2hex(random_bytes(6));
+        mkdir($profileDirectory, 0700, true);
+        $command = 'libreoffice -env:UserInstallation=' . escapeshellarg('file://' . $profileDirectory)
+            . ' --headless --convert-to pdf --outdir ' . escapeshellarg($directory) . ' ' . escapeshellarg($wordPath) . ' 2>&1';
+        exec($command, $conversionOutput, $conversionCode);
+        $pdfFilename = $base . '.pdf';
+        if ($conversionCode !== 0 || !is_file($directory . '/' . $pdfFilename)) return 'The Word file was uploaded, but it could not be converted for preview.';
+
+        $originalName = basename((string) ($file['name'] ?? 'document.docx'));
+        $dataUpdates = [
+            'uploaded_word' => '/uploads/documents/' . $wordFilename,
+            'uploaded_word_name' => $originalName,
+            'uploaded_pdf' => '/uploads/documents/' . $pdfFilename,
+            'uploaded_pdf_name' => pathinfo($originalName, PATHINFO_FILENAME) . '.pdf',
+        ];
+        $draft = json_decode($item['draft_data'], true) ?: [];
+        $published = $item['published_data'] ? (json_decode($item['published_data'], true) ?: []) : null;
+        foreach ($dataUpdates as $key => $value) $draft[$key] = $value;
+        if ($item['is_published']) {
+            $published ??= $draft;
+            foreach ($dataUpdates as $key => $value) $published[$key] = $value;
+        }
+        $update = db()->prepare('UPDATE content_documents SET draft_data=?,published_data=? WHERE id=?');
+        $update->execute([
+            json_encode($draft, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
+            $published === null ? null : json_encode($published, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
+            $id,
+        ]);
         $this->redirect('admin');
     }
 
