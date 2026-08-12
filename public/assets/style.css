@@ -286,6 +286,8 @@ header.border-b { background: linear-gradient(180deg,rgba(250,250,250,.8),rgba(2
 .resume-projects li > p:last-child { margin: 3px 0 0 34px; }
 .resume-activity-detail { margin-left: 9px !important; }
 .resume-editor { font-family: "Times New Roman",Times,serif; }
+.resume-uploaded-preview { padding-top: 2.5rem; }
+.resume-uploaded-preview + .resume-page .paper-shell { display: none; }
 html[data-theme="dark"] { color-scheme: dark; }
 html[data-theme="dark"] body { background: #101112; color: #f5f5f5; }
 html[data-theme="dark"] ::selection { background: #83ffa0; color: #0c1a10; }
@@ -338,6 +340,7 @@ html[data-theme="dark"] header.border-b, html[data-theme="dark"] .app-footer { b
 }
 @media (max-width: 767px) {
   body { font-size: 16px; }
+  body:not(.page-admin):not(.page-edit):not(.page-login):not(.page-layouts) .app-main { text-align: center; }
   .site-width { width: calc(100% - 32px); }
   .sidebar { position: sticky; inset: 0 0 auto; width: 100%; height: auto; flex-direction: row; align-items: center; justify-content: space-between; border-right: 0; border-bottom: 1px solid #e5e5e5; padding: 14px 16px; }
   .sidebar-name { border-bottom: 0; padding-bottom: 0; font-size: 1rem; }

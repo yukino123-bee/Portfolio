@@ -35,6 +35,17 @@ CREATE TABLE IF NOT EXISTS document_layouts (
 
 INSERT INTO document_layouts(id) VALUES(1) ON DUPLICATE KEY UPDATE id=id;
 
+CREATE TABLE IF NOT EXISTS document_uploads (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    content_id BIGINT UNSIGNED NOT NULL,
+    kind VARCHAR(10) NOT NULL,
+    filename VARCHAR(255) NOT NULL,
+    mime_type VARCHAR(120) NOT NULL,
+    file_data LONGBLOB NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX document_content (content_id, kind)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS visitor_activity (
     visitor_id CHAR(64) PRIMARY KEY,
     last_seen TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,

@@ -18,7 +18,10 @@ final class PortfolioController
         $error = null;
 
         if ($page === 'heartbeat') $this->heartbeat();
-        if (database_ready()) $this->ensureResumeFormat();
+        if (database_ready()) {
+            $this->ensurePortfolioRecords();
+            if ($page === 'document') $this->serveDocument();
+        }
 
         if (in_array($page, ['admin', 'edit', 'layouts'], true) && !owner_logged_in()) $this->redirect('login');
         if ($_SERVER['REQUEST_METHOD'] === 'POST') $error = $this->handlePost();
@@ -228,28 +231,77 @@ final class PortfolioController
         return $entries;
     }
 
-    private function ensureResumeFormat(): void
+    private function ensurePortfolioRecords(): void
     {
+        db()->exec('CREATE TABLE IF NOT EXISTS document_uploads (id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY, content_id BIGINT UNSIGNED NOT NULL, kind VARCHAR(10) NOT NULL, filename VARCHAR(255) NOT NULL, mime_type VARCHAR(120) NOT NULL, file_data LONGBLOB NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, INDEX document_content (content_id,kind)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4');
+
+        $samples = require dirname(__DIR__) . '/sample.php';
+        foreach ($samples as $sample) {
+            if (($sample['type'] ?? '') !== 'reflection') continue;
+            $check = db()->query("SELECT id FROM content_documents WHERE type='reflection' LIMIT 1")->fetch();
+            if (!$check) {
+                $json = json_encode($sample['data'], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+                $insert = db()->prepare('INSERT INTO content_documents(type,slug,title,draft_data,published_data,is_published,sort_order,published_at) VALUES(?,?,?,?,?,1,?,NOW())');
+                $insert->execute(['reflection', $sample['slug'], $sample['title'], $json, $json, $sample['sort_order']]);
+            }
+            break;
+        }
+
         $statement = db()->query("SELECT id,draft_data,published_data,is_published FROM content_documents WHERE type='resume' LIMIT 1");
         $resume = $statement->fetch();
         if (!$resume) return;
 
         $draft = json_decode((string) $resume['draft_data'], true) ?: [];
-        if (($draft['resume_version'] ?? 0) >= 2) return;
+        $published = json_decode((string) ($resume['published_data'] ?? ''), true) ?: [];
+        $draftIsComplete = ($draft['resume_version'] ?? 0) >= 2 && trim((string) ($draft['name'] ?? '')) !== '' && trim((string) ($draft['summary'] ?? '')) !== '';
+        $publishedIsComplete = ($published['resume_version'] ?? 0) >= 2 && trim((string) ($published['name'] ?? '')) !== '' && trim((string) ($published['summary'] ?? '')) !== '';
+        if ($draftIsComplete && (!$resume['is_published'] || $publishedIsComplete)) return;
 
         $sampleData = [];
-        foreach (require dirname(__DIR__) . '/sample.php' as $sample) {
+        foreach ($samples as $sample) {
             if (($sample['type'] ?? '') === 'resume') {
                 $sampleData = $sample['data'];
                 break;
             }
         }
+        if ($draftIsComplete) $sampleData = $draft;
         foreach (['uploaded_pdf','uploaded_pdf_name','uploaded_word','uploaded_word_name'] as $key) {
             if (!empty($draft[$key])) $sampleData[$key] = $draft[$key];
+            elseif (!empty($published[$key])) $sampleData[$key] = $published[$key];
         }
         $json = json_encode($sampleData, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
         $update = db()->prepare('UPDATE content_documents SET draft_data=?,published_data=? WHERE id=?');
         $update->execute([$json, $resume['is_published'] ? $json : $resume['published_data'], $resume['id']]);
+    }
+
+    private function storeDocument(string $contentId, string $kind, string $filename, string $mime, string $temporaryPath): string
+    {
+        $data = file_get_contents($temporaryPath);
+        if ($data === false) throw new \RuntimeException('Unable to read the uploaded document.');
+        $statement = db()->prepare('INSERT INTO document_uploads(content_id,kind,filename,mime_type,file_data) VALUES(?,?,?,?,?)');
+        $statement->bindValue(1, (int) $contentId, \PDO::PARAM_INT);
+        $statement->bindValue(2, $kind);
+        $statement->bindValue(3, $filename);
+        $statement->bindValue(4, $mime);
+        $statement->bindValue(5, $data, \PDO::PARAM_LOB);
+        $statement->execute();
+        return '/?page=document&id=' . db()->lastInsertId();
+    }
+
+    private function serveDocument(): never
+    {
+        $statement = db()->prepare('SELECT filename,mime_type,file_data FROM document_uploads WHERE id=? LIMIT 1');
+        $statement->execute([(int) ($_GET['id'] ?? 0)]);
+        $document = $statement->fetch();
+        if (!$document) {
+            http_response_code(404);
+            exit('Document not found.');
+        }
+        header('Content-Type: ' . $document['mime_type']);
+        header('Content-Disposition: inline; filename="' . addcslashes(basename($document['filename']), '"\\') . '"');
+        header('X-Content-Type-Options: nosniff');
+        echo $document['file_data'];
+        exit;
     }
 
     private function skillGroups(): array
@@ -292,13 +344,8 @@ final class PortfolioController
         $item = $statement->fetch();
         if (!$item) return 'Only Resume and Reflection entries accept PDF imports.';
 
-        $directory = dirname(__DIR__, 2) . '/public/uploads/documents';
-        if (!is_dir($directory) && !mkdir($directory, 0755, true) && !is_dir($directory)) return 'Unable to create the PDF upload directory.';
-        $filename = $item['type'] . '-' . $item['id'] . '-' . bin2hex(random_bytes(6)) . '.pdf';
-        if (!move_uploaded_file($file['tmp_name'], $directory . '/' . $filename)) return 'Unable to store the uploaded PDF.';
-
-        $path = '/uploads/documents/' . $filename;
         $originalName = basename((string) ($file['name'] ?? 'document.pdf'));
+        $path = $this->storeDocument($id, 'pdf', $originalName, 'application/pdf', $file['tmp_name']);
         $draft = json_decode($item['draft_data'], true) ?: [];
         $draft['uploaded_pdf'] = $path;
         $draft['uploaded_pdf_name'] = $originalName;
@@ -347,36 +394,11 @@ final class PortfolioController
         $item = $statement->fetch();
         if (!$item) return 'Only Resume and Reflection entries accept Word imports.';
 
-        $directory = dirname(__DIR__, 2) . '/public/uploads/documents';
-        if (!is_dir($directory) && !mkdir($directory, 0755, true) && !is_dir($directory)) return 'Unable to create the document upload directory.';
-        $base = 'word-' . $item['type'] . '-' . $item['id'] . '-' . bin2hex(random_bytes(6));
-        $wordFilename = $base . '.docx';
-        $wordPath = $directory . '/' . $wordFilename;
-        if (!move_uploaded_file($file['tmp_name'], $wordPath)) return 'Unable to store the imported Word document.';
-
-        $pdfFilename = $base . '.pdf';
         $originalName = basename((string) ($file['name'] ?? 'document.docx'));
         $dataUpdates = [
-            'uploaded_word' => '/uploads/documents/' . $wordFilename,
+            'uploaded_word' => $this->storeDocument($id, 'word', $originalName, 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', $file['tmp_name']),
             'uploaded_word_name' => $originalName,
         ];
-
-        // Shared hosts commonly disable process execution. Conversion is optional:
-        // retain the DOCX and only attach a PDF when LibreOffice is actually available.
-        if (function_exists('exec') && is_executable('/usr/bin/libreoffice')) {
-            $profileDirectory = sys_get_temp_dir() . '/portfolio-libreoffice-' . bin2hex(random_bytes(6));
-            if (mkdir($profileDirectory, 0700, true) || is_dir($profileDirectory)) {
-                $command = '/usr/bin/libreoffice -env:UserInstallation=' . escapeshellarg('file://' . $profileDirectory)
-                    . ' --headless --convert-to pdf --outdir ' . escapeshellarg($directory) . ' ' . escapeshellarg($wordPath) . ' 2>&1';
-                $conversionOutput = [];
-                $conversionCode = 1;
-                exec($command, $conversionOutput, $conversionCode);
-                if ($conversionCode === 0 && is_file($directory . '/' . $pdfFilename)) {
-                    $dataUpdates['uploaded_pdf'] = '/uploads/documents/' . $pdfFilename;
-                    $dataUpdates['uploaded_pdf_name'] = pathinfo($originalName, PATHINFO_FILENAME) . '.pdf';
-                }
-            }
-        }
 
         $draft = json_decode($item['draft_data'], true) ?: [];
         $published = $item['published_data'] ? (json_decode($item['published_data'], true) ?: []) : null;
