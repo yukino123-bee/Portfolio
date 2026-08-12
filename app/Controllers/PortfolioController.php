@@ -98,7 +98,14 @@ final class PortfolioController
         require_owner();
         verify_csrf();
         if ($action === 'upload_pdf') return $this->uploadPdf();
-        if ($action === 'upload_word') return $this->uploadWord();
+        if ($action === 'upload_word') {
+            try {
+                return $this->uploadWord();
+            } catch (\Throwable $exception) {
+                error_log('Word import failed: ' . $exception->getMessage());
+                return 'The Word document could not be imported on this server. Please try a PDF if the problem continues.';
+            }
+        }
         if ($action === 'layout') {
             $statement = db()->prepare('UPDATE document_layouts SET resume_template=?,reflection_template=?,font_family=?,font_size=?,line_height=?,section_spacing=? WHERE id=1');
             $statement->execute([$_POST['resume_template'],$_POST['reflection_template'],$_POST['font_family'],(float)$_POST['font_size'],(float)$_POST['line_height'],(int)$_POST['section_spacing']]);
@@ -260,12 +267,17 @@ final class PortfolioController
         if (($file['size'] ?? 0) > 15 * 1024 * 1024) return 'The Word file must be 15 MB or smaller.';
         if (strtolower(pathinfo((string) ($file['name'] ?? ''), PATHINFO_EXTENSION)) !== 'docx') return 'Only modern Word (.docx) files are supported.';
 
-        $archive = new \ZipArchive();
-        if ($archive->open($file['tmp_name']) !== true || $archive->locateName('[Content_Types].xml') === false || $archive->locateName('word/document.xml') === false) {
-            if ($archive->status === \ZipArchive::ER_OK) $archive->close();
-            return 'The selected file is not a valid Word document.';
+        if (class_exists(\ZipArchive::class)) {
+            $archive = new \ZipArchive();
+            if ($archive->open($file['tmp_name']) !== true || $archive->locateName('[Content_Types].xml') === false || $archive->locateName('word/document.xml') === false) {
+                if ($archive->status === \ZipArchive::ER_OK) $archive->close();
+                return 'The selected file is not a valid Word document.';
+            }
+            $archive->close();
+        } else {
+            $header = file_get_contents($file['tmp_name'], false, null, 0, 4);
+            if ($header !== "PK\x03\x04") return 'The selected file is not a valid Word document.';
         }
-        $archive->close();
 
         $statement = db()->prepare("SELECT id,type,draft_data,published_data,is_published FROM content_documents WHERE id=? AND type IN ('resume','reflection') LIMIT 1");
         $statement->execute([$id]);
@@ -279,23 +291,36 @@ final class PortfolioController
         $wordPath = $directory . '/' . $wordFilename;
         if (!move_uploaded_file($file['tmp_name'], $wordPath)) return 'Unable to store the imported Word document.';
 
-        $profileDirectory = sys_get_temp_dir() . '/portfolio-libreoffice-' . bin2hex(random_bytes(6));
-        mkdir($profileDirectory, 0700, true);
-        $command = 'libreoffice -env:UserInstallation=' . escapeshellarg('file://' . $profileDirectory)
-            . ' --headless --convert-to pdf --outdir ' . escapeshellarg($directory) . ' ' . escapeshellarg($wordPath) . ' 2>&1';
-        exec($command, $conversionOutput, $conversionCode);
         $pdfFilename = $base . '.pdf';
-        if ($conversionCode !== 0 || !is_file($directory . '/' . $pdfFilename)) return 'The Word file was uploaded, but it could not be converted for preview.';
-
         $originalName = basename((string) ($file['name'] ?? 'document.docx'));
         $dataUpdates = [
             'uploaded_word' => '/uploads/documents/' . $wordFilename,
             'uploaded_word_name' => $originalName,
-            'uploaded_pdf' => '/uploads/documents/' . $pdfFilename,
-            'uploaded_pdf_name' => pathinfo($originalName, PATHINFO_FILENAME) . '.pdf',
         ];
+
+        // Shared hosts commonly disable process execution. Conversion is optional:
+        // retain the DOCX and only attach a PDF when LibreOffice is actually available.
+        if (function_exists('exec') && is_executable('/usr/bin/libreoffice')) {
+            $profileDirectory = sys_get_temp_dir() . '/portfolio-libreoffice-' . bin2hex(random_bytes(6));
+            if (mkdir($profileDirectory, 0700, true) || is_dir($profileDirectory)) {
+                $command = '/usr/bin/libreoffice -env:UserInstallation=' . escapeshellarg('file://' . $profileDirectory)
+                    . ' --headless --convert-to pdf --outdir ' . escapeshellarg($directory) . ' ' . escapeshellarg($wordPath) . ' 2>&1';
+                $conversionOutput = [];
+                $conversionCode = 1;
+                exec($command, $conversionOutput, $conversionCode);
+                if ($conversionCode === 0 && is_file($directory . '/' . $pdfFilename)) {
+                    $dataUpdates['uploaded_pdf'] = '/uploads/documents/' . $pdfFilename;
+                    $dataUpdates['uploaded_pdf_name'] = pathinfo($originalName, PATHINFO_FILENAME) . '.pdf';
+                }
+            }
+        }
+
         $draft = json_decode($item['draft_data'], true) ?: [];
         $published = $item['published_data'] ? (json_decode($item['published_data'], true) ?: []) : null;
+        if (!isset($dataUpdates['uploaded_pdf'])) {
+            unset($draft['uploaded_pdf'], $draft['uploaded_pdf_name']);
+            if ($published !== null) unset($published['uploaded_pdf'], $published['uploaded_pdf_name']);
+        }
         foreach ($dataUpdates as $key => $value) $draft[$key] = $value;
         if ($item['is_published']) {
             $published ??= $draft;
