@@ -4,7 +4,6 @@ The workflow in `.github/workflows/deploy-infinityfree.yml` validates and deploy
 
 Create a GitHub environment named `production`, then add these environment secrets:
 
-- `INFINITYFREE_FTP_USERNAME` — the FTP username shown by InfinityFree
 - `INFINITYFREE_FTP_PASSWORD` — the hosting account/FTP password
 - `APP_URL` — the complete public website URL, including `https://`
 - `DB_HOST` — `sql105.infinityfree.com` for the account shown
@@ -18,3 +17,5 @@ Create a GitHub environment named `production`, then add these environment secre
 The deployment package contains only `app`, `public`, `.htaccess`, and a generated production `.env`. Server-uploaded Resume and Reflection documents under `public/uploads/documents` are excluded so later deployments do not delete them.
 
 The database must be created in the InfinityFree control panel and initialized once through phpMyAdmin using `database/schema.sql`. The automatic workflow deploys application changes but does not connect remotely to InfinityFree MySQL.
+
+The InfinityFree FTP username `if0_42633892` is configured directly in the workflow. If the hosting account changes, update the workflow value.

@@ -67,7 +67,7 @@ jobs:
         uses: SamKirkland/FTP-Deploy-Action@v4.4.0
         with:
           server: ftpupload.net
-          username: ${{ secrets.INFINITYFREE_FTP_USERNAME }}
+          username: if0_42633892
           password: ${{ secrets.INFINITYFREE_FTP_PASSWORD }}
           protocol: ftp
           port: 21
