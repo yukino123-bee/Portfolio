@@ -34,3 +34,9 @@ CREATE TABLE IF NOT EXISTS document_layouts (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 INSERT INTO document_layouts(id) VALUES(1) ON DUPLICATE KEY UPDATE id=id;
+
+CREATE TABLE IF NOT EXISTS visitor_activity (
+    visitor_id CHAR(64) PRIMARY KEY,
+    last_seen TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX visitor_last_seen (last_seen)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

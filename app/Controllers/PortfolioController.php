@@ -17,6 +17,8 @@ final class PortfolioController
         $slug = $_GET['slug'] ?? null;
         $error = null;
 
+        if ($page === 'heartbeat') $this->heartbeat();
+
         if (in_array($page, ['admin', 'edit', 'layouts'], true) && !owner_logged_in()) $this->redirect('login');
         if ($_SERVER['REQUEST_METHOD'] === 'POST') $error = $this->handlePost();
         if ($page === 'reflections') {
@@ -311,6 +313,25 @@ final class PortfolioController
     private function redirect(string $page): never
     {
         header('Location: /?page=' . urlencode($page));
+        exit;
+    }
+
+    private function heartbeat(): never
+    {
+        header('Content-Type: application/json; charset=utf-8');
+        header('Cache-Control: no-store');
+        try {
+            db()->exec('CREATE TABLE IF NOT EXISTS visitor_activity (visitor_id CHAR(64) PRIMARY KEY,last_seen TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,INDEX visitor_last_seen(last_seen)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci');
+            $visitorId = hash('sha256', session_id());
+            $statement = db()->prepare('INSERT INTO visitor_activity(visitor_id,last_seen) VALUES(?,NOW()) ON DUPLICATE KEY UPDATE last_seen=NOW()');
+            $statement->execute([$visitorId]);
+            if (random_int(1, 30) === 1) db()->exec('DELETE FROM visitor_activity WHERE last_seen < NOW() - INTERVAL 1 DAY');
+            $count = (int) db()->query('SELECT COUNT(*) FROM visitor_activity WHERE last_seen >= NOW() - INTERVAL 2 MINUTE')->fetchColumn();
+            echo json_encode(['active' => $count]);
+        } catch (\Throwable) {
+            http_response_code(503);
+            echo json_encode(['active' => null]);
+        }
         exit;
     }
 }

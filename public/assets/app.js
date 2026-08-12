@@ -101,7 +101,20 @@ themeToggle.addEventListener('click',()=>{
   window.setTimeout(()=>document.documentElement.classList.remove('theme-changing'),550);
 });
 
-const button=document.querySelector('#menu-button');const menu=document.querySelector('#mobile-menu');button?.addEventListener('click',()=>menu?.classList.toggle('hidden'));
+const button=document.querySelector('#menu-button');const menu=document.querySelector('#mobile-menu');button?.addEventListener('click',()=>{menu?.classList.toggle('hidden');button.setAttribute('aria-expanded',String(!menu?.classList.contains('hidden')))});
+const activeViewCount=document.querySelector('#active-view-count');
+const updateActiveViews=async()=>{
+  if(!activeViewCount||document.hidden)return;
+  try{
+    const response=await fetch('/?page=heartbeat',{cache:'no-store',headers:{Accept:'application/json'}});
+    if(!response.ok)throw new Error('heartbeat unavailable');
+    const data=await response.json();
+    activeViewCount.textContent=Number.isInteger(data.active)?String(data.active):'—';
+  }catch{activeViewCount.textContent='—';}
+};
+updateActiveViews();
+window.setInterval(updateActiveViews,30000);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)updateActiveViews()});
 
 const profileNameButton=document.querySelector('#profile-name-button');
 const profileInfo=document.querySelector('#profile-full-info');
