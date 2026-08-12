@@ -4,5 +4,6 @@ storage/*.log
 storage/*.pdf
 public/uploads/documents/*
 !public/uploads/documents/.gitkeep
+database/*_export.sql
 __pycache__/
 .DS_Store
