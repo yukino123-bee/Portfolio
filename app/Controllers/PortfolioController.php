@@ -18,6 +18,7 @@ final class PortfolioController
         $error = null;
 
         if ($page === 'heartbeat') $this->heartbeat();
+        if (database_ready()) $this->ensureResumeFormat();
 
         if (in_array($page, ['admin', 'edit', 'layouts'], true) && !owner_logged_in()) $this->redirect('login');
         if ($_SERVER['REQUEST_METHOD'] === 'POST') $error = $this->handlePost();
@@ -161,17 +162,35 @@ final class PortfolioController
                     'skills' => array_values(array_unique($skills)),
                 ];
             } elseif (isset($_POST['resume_form'])) {
+                $projects = [];
+                foreach (($_POST['project_name'] ?? []) as $index => $name) {
+                    $projects[] = [
+                        'name' => trim((string) $name),
+                        'technologies' => trim((string) ($_POST['project_technologies'][$index] ?? '')),
+                        'description' => trim((string) ($_POST['project_description'][$index] ?? '')),
+                    ];
+                }
                 $data = [
+                    'resume_version' => 2,
                     'name' => trim($_POST['name'] ?? ''),
                     'headline' => trim($_POST['headline'] ?? ''),
-                    'email' => trim($_POST['email'] ?? ''),
-                    'phone' => trim($_POST['phone'] ?? ''),
                     'location' => trim($_POST['location'] ?? ''),
+                    'phone' => trim($_POST['phone'] ?? ''),
+                    'email' => trim($_POST['email'] ?? ''),
+                    'github' => trim($_POST['github'] ?? ''),
+                    'linkedin' => trim($_POST['linkedin'] ?? ''),
                     'website' => trim($_POST['website'] ?? ''),
                     'summary' => trim($_POST['summary'] ?? ''),
-                    'experience' => $this->documentEntries('experience', 'role', 'organization'),
-                    'education' => $this->documentEntries('education', 'degree', 'school'),
                     'skills' => $this->skillGroups(),
+                    'projects' => $projects,
+                    'education_degree' => trim($_POST['education_degree'] ?? ''),
+                    'education_period' => trim($_POST['education_period'] ?? ''),
+                    'education_school' => trim($_POST['education_school'] ?? ''),
+                    'activity_role' => trim($_POST['activity_role'] ?? ''),
+                    'activity_organization' => trim($_POST['activity_organization'] ?? ''),
+                    'activity_year' => trim($_POST['activity_year'] ?? ''),
+                    'activity_details' => trim($_POST['activity_details'] ?? ''),
+                    'certifications' => trim($_POST['certifications'] ?? ''),
                 ];
                 $this->preserveUploadedPdf($id, $data);
             } elseif (isset($_POST['reflection_form'])) {
@@ -207,6 +226,30 @@ final class PortfolioController
             ];
         }
         return $entries;
+    }
+
+    private function ensureResumeFormat(): void
+    {
+        $statement = db()->query("SELECT id,draft_data,published_data,is_published FROM content_documents WHERE type='resume' LIMIT 1");
+        $resume = $statement->fetch();
+        if (!$resume) return;
+
+        $draft = json_decode((string) $resume['draft_data'], true) ?: [];
+        if (($draft['resume_version'] ?? 0) >= 2) return;
+
+        $sampleData = [];
+        foreach (require dirname(__DIR__) . '/sample.php' as $sample) {
+            if (($sample['type'] ?? '') === 'resume') {
+                $sampleData = $sample['data'];
+                break;
+            }
+        }
+        foreach (['uploaded_pdf','uploaded_pdf_name','uploaded_word','uploaded_word_name'] as $key) {
+            if (!empty($draft[$key])) $sampleData[$key] = $draft[$key];
+        }
+        $json = json_encode($sampleData, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        $update = db()->prepare('UPDATE content_documents SET draft_data=?,published_data=? WHERE id=?');
+        $update->execute([$json, $resume['is_published'] ? $json : $resume['published_data'], $resume['id']]);
     }
 
     private function skillGroups(): array

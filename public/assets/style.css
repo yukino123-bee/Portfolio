@@ -269,6 +269,23 @@ header.border-b { background: linear-gradient(180deg,rgba(250,250,250,.8),rgba(2
 .doc-section { margin-top: var(--doc-space,16px); break-inside: avoid; }
 .doc-section h2 { margin: 0 0 8px; border-bottom: 1px solid #aaa; padding-bottom: 4px; font-size: 12pt; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
 .paper p { margin: 0 0 8px; }
+.resume-source { width: 215.9mm; min-height: 279.4mm; padding: 11.43mm 13.97mm 13.7mm; font-family: "Times New Roman",Times,serif; font-size: 11pt; line-height: 1.16; page: resume; }
+.resume-source-header { text-align: center; }
+.resume-source-header h1 { margin: 0; font-size: 12pt; font-weight: 700; }
+.resume-source-headline { margin: 2px 0 6px !important; font-size: 12pt; font-weight: 700; }
+.resume-source-header p:last-child { margin: 0; line-height: 1.25; }
+.resume-source span { padding: 0 .25em; }
+.resume-source-section { margin-top: 20px; break-inside: avoid; }
+.resume-source-section h2 { margin: 0 0 5px; font-size: 11pt; font-weight: 700; text-transform: uppercase; }
+.resume-source-section p { margin: 0; }
+.resume-skills { display: grid; grid-template-columns: 43% 57%; margin: 0; }
+.resume-skills dt { font-weight: 700; }
+.resume-skills dd { margin: 0; }
+.resume-projects { margin: 0; padding-left: 29px; }
+.resume-projects li { margin-bottom: 15px; padding-left: 8px; }
+.resume-projects li > p:last-child { margin: 3px 0 0 34px; }
+.resume-activity-detail { margin-left: 9px !important; }
+.resume-editor { font-family: "Times New Roman",Times,serif; }
 html[data-theme="dark"] { color-scheme: dark; }
 html[data-theme="dark"] body { background: #101112; color: #f5f5f5; }
 html[data-theme="dark"] ::selection { background: #83ffa0; color: #0c1a10; }
@@ -401,10 +418,13 @@ html[data-theme="dark"] header.border-b, html[data-theme="dark"] .app-footer { b
 }
 @media print {
   @page { size: A4; margin: 0; }
+  @page resume { size: Letter; margin: 0; }
   html, body { width: 210mm; margin: 0 !important; padding: 0 !important; background: #fff !important; color: #111 !important; }
   .no-print { display: none !important; }
   .app-main > section { margin: 0 !important; padding: 0 !important; }
   .site-width { width: auto !important; margin: 0 !important; }
   .paper-shell { overflow: visible; margin: 0; padding: 0; background: none; }
   .paper { width: 210mm; min-height: 297mm; margin: 0; padding: 25.4mm !important; box-shadow: none; print-color-adjust: exact; }
+  body.page-resume, body.page-resume .app-main { width: 215.9mm !important; }
+  .paper.resume-source { width: 215.9mm; min-height: 279.4mm; padding: 11.43mm 13.97mm 13.7mm !important; }
 }
