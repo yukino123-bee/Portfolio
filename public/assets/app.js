@@ -116,6 +116,48 @@ updateActiveViews();
 window.setInterval(updateActiveViews,30000);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)updateActiveViews()});
 
+const certificateCards=[...document.querySelectorAll('.certificate-card')];
+if(certificateCards.length){
+  const certificateModal=document.createElement('dialog');
+  certificateModal.className='certificate-modal';
+  certificateModal.setAttribute('aria-labelledby','certificate-modal-title');
+  certificateModal.innerHTML='<div class="certificate-modal-panel"><header><h2 id="certificate-modal-title"></h2><button type="button" aria-label="Close certificate">×</button></header><div class="certificate-modal-content"></div></div>';
+  document.body.append(certificateModal);
+  const modalTitle=certificateModal.querySelector('h2');
+  const modalContent=certificateModal.querySelector('.certificate-modal-content');
+  const closeButton=certificateModal.querySelector('button');
+  const closeCertificate=()=>certificateModal.close();
+  closeButton.addEventListener('click',closeCertificate);
+  certificateModal.addEventListener('click',(event)=>{if(event.target===certificateModal)closeCertificate();});
+  certificateModal.addEventListener('close',()=>{modalContent.replaceChildren();});
+  certificateCards.forEach((card)=>{
+    card.removeAttribute('target');
+    card.addEventListener('click',(event)=>{
+      event.preventDefault();
+      const source=card.getAttribute('href');
+      const title=card.querySelector('h2')?.textContent.trim()||'Certificate';
+      modalTitle.textContent=title;
+      if(source?.toLowerCase().endsWith('.pdf')){
+        const frame=document.createElement('iframe');
+        frame.src=source;
+        frame.title=title;
+        modalContent.append(frame);
+      }else{
+        const imageWrap=document.createElement('div');
+        imageWrap.className='certificate-modal-image-wrap';
+        const image=document.createElement('img');
+        image.src=source||'';
+        image.alt=title;
+        if(card.querySelector('.certificate-preview-rotated'))image.className='is-rotated';
+        imageWrap.append(image);
+        modalContent.append(imageWrap);
+      }
+      certificateModal.showModal();
+      closeButton.focus();
+    });
+  });
+}
+
 const reflectionPdfButton=document.querySelector('.page-reflection button[onclick="window.print()"]');
 if(reflectionPdfButton){
   reflectionPdfButton.textContent='Export as PDF';

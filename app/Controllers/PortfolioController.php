@@ -239,6 +239,7 @@ final class PortfolioController
         db()->exec('CREATE TABLE IF NOT EXISTS document_uploads (id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY, content_id BIGINT UNSIGNED NOT NULL, kind VARCHAR(10) NOT NULL, filename VARCHAR(255) NOT NULL, mime_type VARCHAR(120) NOT NULL, file_data LONGBLOB NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, INDEX document_content (content_id,kind)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4');
 
         $samples = require dirname(__DIR__) . '/sample.php';
+        $this->applyContentMigration($samples);
         foreach ($samples as $sample) {
             if (($sample['type'] ?? '') !== 'reflection') continue;
             $check = db()->query("SELECT id FROM content_documents WHERE type='reflection' LIMIT 1")->fetch();
@@ -275,6 +276,39 @@ final class PortfolioController
         $json = json_encode($sampleData, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
         $update = db()->prepare('UPDATE content_documents SET draft_data=?,published_data=? WHERE id=?');
         $update->execute([$json, $resume['is_published'] ? $json : $resume['published_data'], $resume['id']]);
+    }
+
+    private function applyContentMigration(array $samples): void
+    {
+        $migration = '20260823_reflection_and_blank_resume';
+        db()->exec('CREATE TABLE IF NOT EXISTS app_migrations (name VARCHAR(120) PRIMARY KEY, applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4');
+        $check = db()->prepare('SELECT 1 FROM app_migrations WHERE name=? LIMIT 1');
+        $check->execute([$migration]);
+        if ($check->fetchColumn()) return;
+
+        db()->beginTransaction();
+        try {
+            foreach ($samples as $sample) {
+                if (!in_array($sample['type'] ?? '', ['reflection', 'resume'], true)) continue;
+                $json = json_encode($sample['data'], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+                $existing = db()->prepare('SELECT id FROM content_documents WHERE type=? ORDER BY id LIMIT 1');
+                $existing->execute([$sample['type']]);
+                $id = $existing->fetchColumn();
+                if ($id) {
+                    $update = db()->prepare('UPDATE content_documents SET slug=?,title=?,draft_data=?,published_data=?,is_published=1,sort_order=?,published_at=NOW() WHERE id=?');
+                    $update->execute([$sample['slug'], $sample['title'], $json, $json, $sample['sort_order'], $id]);
+                } else {
+                    $insert = db()->prepare('INSERT INTO content_documents(type,slug,title,draft_data,published_data,is_published,sort_order,published_at) VALUES(?,?,?,?,?,1,?,NOW())');
+                    $insert->execute([$sample['type'], $sample['slug'], $sample['title'], $json, $json, $sample['sort_order']]);
+                }
+            }
+            $record = db()->prepare('INSERT INTO app_migrations(name) VALUES(?)');
+            $record->execute([$migration]);
+            db()->commit();
+        } catch (\Throwable $exception) {
+            if (db()->inTransaction()) db()->rollBack();
+            throw $exception;
+        }
     }
 
     private function storeDocument(string $contentId, string $kind, string $filename, string $mime, string $temporaryPath): string
