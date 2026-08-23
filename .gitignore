@@ -2,6 +2,10 @@
 .deploy/
 storage/*.log
 storage/*.pdf
+storage/mysql/
+storage/private-mysql/
+storage/mysql.sock*
+storage/mysql.pid
 public/uploads/documents/*
 !public/uploads/documents/.gitkeep
 database/*_export.sql

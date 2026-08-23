@@ -39,7 +39,7 @@ final class Content
 
     public function layoutSettings(): array
     {
-        $default = ['resume_template'=>'classic','reflection_template'=>'academic','font_family'=>'Arial','font_size'=>10.5,'line_height'=>1.45,'section_spacing'=>16];
+        $default = ['resume_template'=>'classic','reflection_template'=>'academic','font_family'=>'Times New Roman','font_size'=>12,'line_height'=>1.5,'section_spacing'=>16];
         if (!database_ready()) return $default;
         return db()->query('SELECT * FROM document_layouts WHERE id=1')->fetch() ?: $default;
     }

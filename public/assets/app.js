@@ -116,6 +116,24 @@ updateActiveViews();
 window.setInterval(updateActiveViews,30000);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)updateActiveViews()});
 
+const reflectionPdfButton=document.querySelector('.page-reflection button[onclick="window.print()"]');
+if(reflectionPdfButton){
+  reflectionPdfButton.textContent='Export as PDF';
+  reflectionPdfButton.setAttribute('aria-label','Export reflection as PDF');
+  reflectionPdfButton.removeAttribute('onclick');
+  reflectionPdfButton.addEventListener('click',()=>{
+    const originalTitle=document.title;
+    const reflectionTitle=document.querySelector('.reflection-document-header h1')?.textContent.trim()||'Reflection Paper';
+    document.title=reflectionTitle.replace(/[\\/:*?"<>|]/g,'-');
+    const restoreTitle=()=>{
+      document.title=originalTitle;
+      window.removeEventListener('afterprint',restoreTitle);
+    };
+    window.addEventListener('afterprint',restoreTitle);
+    window.print();
+  });
+}
+
 const profileNameButton=document.querySelector('#profile-name-button');
 const profileInfo=document.querySelector('#profile-full-info');
 const learningTags=document.querySelector('.profile-intro > .mt-6');

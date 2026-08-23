@@ -183,6 +183,23 @@ html[data-theme="dark"] .theme-sun { opacity: 1; transform: rotate(0) scale(1); 
 .profile-meta span::before { content: "•"; margin-right: .5rem; color: #a3a3a3; }
 .current-work { grid-column: 1 / -1; margin-top: 3rem; }
 .current-work-placeholder { margin: 0; padding: 2rem 0; border-top: 1px solid #e5e5e5; border-bottom: 1px solid #e5e5e5; color: #525252; font-size: .95rem; }
+.certificates-section { padding-top: 1rem; padding-bottom: 5rem; }
+.certificates-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(240px,320px)); justify-content: start; gap: 1rem; }
+.certificate-card { overflow: hidden; border: 1px solid #d4d4d4; border-radius: 12px; background: #fff; box-shadow: 0 10px 26px rgba(0,0,0,.055); opacity: 0; transform: translateY(18px) scale(.98); animation: certificate-reveal .6s cubic-bezier(.2,.75,.25,1) forwards; transition: transform .25s ease, border-color .25s ease, box-shadow .25s ease; }
+.certificate-card:nth-child(2) { animation-delay: .12s; }
+.certificate-card:hover { border-color: #8a8a8a; box-shadow: 0 16px 36px rgba(0,0,0,.15); transform: translateY(-6px) scale(1.015); }
+.certificate-preview { position: relative; display: grid; aspect-ratio: 1.414 / 1; place-items: center; overflow: hidden; border-bottom: 1px solid #dedede; background: #e5e5e5; }
+.certificate-preview img { width: 100%; height: 100%; object-fit: contain; transition: transform .4s cubic-bezier(.2,.75,.25,1); }
+.certificate-card:hover .certificate-preview:not(.certificate-preview-rotated) img { transform: scale(1.035); }
+.certificate-preview-rotated img { position: absolute; top: 50%; left: 50%; width: 68.5%; max-width: none; height: auto; transform: translate(-50%,-50%) rotate(90deg); }
+.certificate-card:hover .certificate-preview-rotated img { transform: translate(-50%,-50%) rotate(90deg) scale(1.035); }
+.certificate-details { padding: 1rem; }
+.certificate-kind { margin-bottom: .45rem; color: #737373; font-size: .72rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.certificate-details h2 { margin: 0; font-size: 1rem; line-height: 1.35; }
+.certificate-details h2 + p { margin: .55rem 0 .8rem; color: #737373; font-size: .75rem; }
+.certificate-details span { display: inline-block; font-size: .75rem; font-weight: 700; transition: transform .2s ease; }
+.certificate-card:hover .certificate-details span { transform: translateX(4px); }
+@keyframes certificate-reveal { to { opacity: 1; transform: translateY(0) scale(1); } }
 .learning-section { grid-column: 1 / -1; padding-top: 3.5rem; }
 .learning-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; margin-bottom: 1.25rem; }
 .learning-heading p { margin: 0; }
@@ -202,7 +219,6 @@ html[data-theme="dark"] .theme-sun { opacity: 1; transform: rotate(0) scale(1); 
 .button:hover, .button-outline:hover { transform: translateY(-2px); box-shadow: 0 8px 18px rgba(0,0,0,.14); }
 .button:active, .button-outline:active { transform: translateY(0); box-shadow: none; }
 .no-print > a.button[target="_blank"] { display: none; }
-.page-reflection .no-print > button[onclick="window.print()"] { display: none; }
 .field { display: block; width: 100%; margin-top: .45rem; border: 1px solid #cfcfcf; border-radius: 9px; background: #fafafa; padding: .78rem .88rem; font-weight: 400; outline: none; transition: border-color .18s ease, background-color .18s ease, box-shadow .18s ease; }
 .field:focus { border-color: #555; box-shadow: 0 0 0 3px #eee; }
 .profile-editor-heading { display: flex; align-items: center; gap: 1.25rem; padding: 1.25rem; border: 1px solid #e5e5e5; border-radius: 10px; background: #fafafa; }
@@ -264,7 +280,12 @@ header.border-b { background: linear-gradient(180deg,rgba(250,250,250,.8),rgba(2
 .imported-pdf-shell iframe { width: 100%; height: min(78vh,900px); border: 0; border-radius: 5px; background: #fff; }
 .paper { width: 210mm; min-height: 297mm; margin: auto; background: #fff; color: #111; padding: 25.4mm; font-size: var(--doc-size,10.5pt); line-height: var(--doc-line,1.45); box-shadow: 0 22px 55px rgba(0,0,0,.17); }
 .paper.modern > header { text-align: left; border-bottom-width: 4px; }
-.reflection-document-header { text-align: center; }
+.reflection { font-family: "Times New Roman",Times,serif; font-size: 12pt; line-height: 1.5; }
+.reflection-document-header { margin-bottom: 24px; text-align: center; }
+.reflection-document-header h1 { margin: 0; font-size: 14pt; font-weight: 700; }
+.reflection-meta { margin-top: 6px !important; color: #525252; font-size: 11pt; }
+.reflection-body p { margin: 0 0 12pt; text-align: justify; text-indent: .5in; }
+.reflection-editor { font-family: "Times New Roman",Times,serif; }
 .reflection.journal .reflection-document-header { text-align: left; border-bottom-width: 3px; }
 .doc-section { margin-top: var(--doc-space,16px); break-inside: avoid; }
 .doc-section h2 { margin: 0 0 8px; border-bottom: 1px solid #aaa; padding-bottom: 4px; font-size: 12pt; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
@@ -311,6 +332,10 @@ html[data-theme="dark"] .profile-name-button { color: #fff; }
 html[data-theme="dark"] .profile-name-button:hover, html[data-theme="dark"] .profile-name-button:focus-visible { border-color: #f5f5f5; background: #1c1e20; box-shadow: 5px 5px 0 #f5f5f5; }
 html[data-theme="dark"] .name-tap-cursor::before { color: #d4d4d4; }
 html[data-theme="dark"] .profile-meta, html[data-theme="dark"] .current-work-placeholder { border-color: #37393d; color: #b7b7b7; }
+html[data-theme="dark"] .certificate-card { border-color: #3b3d41; background: #1b1c1f; }
+html[data-theme="dark"] .certificate-card:hover { border-color: #707277; }
+html[data-theme="dark"] .certificate-preview { border-color: #3b3d41; background: #25272a; }
+html[data-theme="dark"] .certificate-kind, html[data-theme="dark"] .certificate-details h2 + p { color: #aaaeb4; }
 html[data-theme="dark"] .section-heading::after { background: linear-gradient(90deg,#45484c,transparent); }
 html[data-theme="dark"] .profile-intro > p, html[data-theme="dark"] .learning-environment, html[data-theme="dark"] .text-neutral-500, html[data-theme="dark"] .text-neutral-600, html[data-theme="dark"] .text-neutral-700 { color: #b7b7b7; }
 html[data-theme="dark"] .label, html[data-theme="dark"] .admin-type, html[data-theme="dark"] .profile-socials a { color: #c4c4c4; }
@@ -342,6 +367,7 @@ html[data-theme="dark"] header.border-b, html[data-theme="dark"] .app-footer { b
   .md\:text-7xl { font-size: 4.5rem; line-height: 1; }
 }
 @media (max-width: 767px) {
+  .certificates-grid { grid-template-columns: 1fr; }
   body { font-size: 16px; }
   body:not(.page-admin):not(.page-edit):not(.page-login):not(.page-layouts) .app-main { text-align: center; }
   .site-width { width: calc(100% - 32px); }
@@ -432,16 +458,23 @@ html[data-theme="dark"] header.border-b, html[data-theme="dark"] .app-footer { b
 @media (prefers-reduced-motion: reduce) {
   .name-tap-cursor, .profile-name-button.is-tapped, .profile-full-info.is-visible { animation: none; }
   .language-icon { transition: none; }
+  .certificate-card { opacity: 1; transform: none; animation: none; transition: none; }
+  .certificate-preview img, .certificate-details span { transition: none; }
 }
 @media print {
   @page { size: A4; margin: 0; }
   @page resume { size: Letter; margin: 0; }
-  html, body { width: 210mm; margin: 0 !important; padding: 0 !important; background: #fff !important; color: #111 !important; }
+  @page reflection { size: A4; margin: 25.4mm; }
+  html, body { width: auto; margin: 0 !important; padding: 0 !important; background: #fff !important; color: #111 !important; }
   .no-print { display: none !important; }
   .app-main > section { margin: 0 !important; padding: 0 !important; }
   .site-width { width: auto !important; margin: 0 !important; }
-  .paper-shell { overflow: visible; margin: 0; padding: 0; background: none; }
+  .paper-shell { overflow: visible; margin: 0; border: 0; border-radius: 0; padding: 0; background: none; }
   .paper { width: 210mm; min-height: 297mm; margin: 0; padding: 25.4mm !important; box-shadow: none; print-color-adjust: exact; }
+  body.page-reflection, body.page-reflection .app-main { width: auto !important; }
+  .paper.reflection { width: auto; min-height: 0; padding: 0 !important; font-size: 12pt; line-height: 1.5; page: reflection; }
+  .reflection-document-header { margin-bottom: 24px; }
+  .reflection-body p { margin-bottom: 12pt; orphans: 3; widows: 3; }
   body.page-resume, body.page-resume .app-main { width: 215.9mm !important; }
   .paper.resume-source { width: 215.9mm; min-height: 279.4mm; padding: 11.43mm 13.97mm 13.7mm !important; }
 }

@@ -26,9 +26,9 @@ CREATE TABLE IF NOT EXISTS document_layouts (
     id TINYINT UNSIGNED PRIMARY KEY,
     resume_template ENUM('classic','modern') NOT NULL DEFAULT 'classic',
     reflection_template ENUM('academic','journal') NOT NULL DEFAULT 'academic',
-    font_family ENUM('Arial','Georgia','Inter') NOT NULL DEFAULT 'Arial',
-    font_size DECIMAL(4,1) NOT NULL DEFAULT 10.5,
-    line_height DECIMAL(3,2) NOT NULL DEFAULT 1.45,
+    font_family ENUM('Times New Roman','Arial','Georgia','Inter') NOT NULL DEFAULT 'Times New Roman',
+    font_size DECIMAL(4,1) NOT NULL DEFAULT 12.0,
+    line_height DECIMAL(3,2) NOT NULL DEFAULT 1.50,
     section_spacing SMALLINT UNSIGNED NOT NULL DEFAULT 16,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

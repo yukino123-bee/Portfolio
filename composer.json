@@ -18,6 +18,6 @@
         ]
     },
     "scripts": {
-        "start": "php -d upload_max_filesize=16M -d post_max_size=20M -S localhost:8000 -t public router.php"
+        "start": "bash scripts/start-local-db.sh && php -d upload_max_filesize=16M -d post_max_size=20M -S localhost:8000 -t public router.php"
     }
 }

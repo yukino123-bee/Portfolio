@@ -201,7 +201,7 @@ final class PortfolioController
                 $this->preserveUploadedPdf($id, $data);
             } elseif (isset($_POST['reflection_form'])) {
                 $data = [];
-                foreach (['title','date','course','instructor','activity','experience','observations','learning','next_steps','conclusion'] as $field) {
+                foreach (['title','date','course','instructor','body'] as $field) {
                     $data[$field] = trim($_POST[$field] ?? '');
                 }
                 $this->preserveUploadedPdf($id, $data);

@@ -28,7 +28,7 @@ Initialize the tables, owner, and sample content:
 php database/seed.php
 ```
 
-Start the site:
+Start the site (this also starts the portfolio's private local MySQL instance on port 3307 when needed):
 
 ```bash
 composer start
