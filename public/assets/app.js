@@ -2,7 +2,7 @@ const themeToggle=document.createElement('button');
 themeToggle.type='button';
 themeToggle.className='theme-toggle no-print';
 themeToggle.setAttribute('aria-label','Switch color theme');
-themeToggle.innerHTML='<span class="theme-sun" aria-hidden="true">☀</span><span class="theme-moon" aria-hidden="true">☾</span>';
+themeToggle.innerHTML='<span class="theme-sun" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg></span><span class="theme-moon" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg></span>';
 (document.querySelector('.header-right')||document.body).append(themeToggle);
 const languageCloud=document.createElement('aside');
 languageCloud.className='language-cloud no-print';
@@ -102,6 +102,25 @@ themeToggle.addEventListener('click',()=>{
 });
 
 const button=document.querySelector('#menu-button');const menu=document.querySelector('#mobile-menu');button?.addEventListener('click',()=>{menu?.classList.toggle('hidden');button.setAttribute('aria-expanded',String(!menu?.classList.contains('hidden')))});
+
+const mobileBottomNav = document.querySelector('.mobile-bottom-nav');
+if (mobileBottomNav) {
+  let lastScrollY = window.scrollY;
+  let scrollTimeout = null;
+  window.addEventListener('scroll', () => {
+    const currentScrollY = window.scrollY;
+    if (currentScrollY > lastScrollY && currentScrollY > 120) {
+      mobileBottomNav.style.transform = 'translate(-50%, 120%)';
+    } else {
+      mobileBottomNav.style.transform = 'translateX(-50%)';
+    }
+    lastScrollY = currentScrollY;
+    if (scrollTimeout) clearTimeout(scrollTimeout);
+    scrollTimeout = setTimeout(() => {
+      mobileBottomNav.style.transform = 'translateX(-50%)';
+    }, 1000);
+  }, { passive: true });
+}
 const activeViewCount=document.querySelector('#active-view-count');
 const updateActiveViews=async()=>{
   if(!activeViewCount||document.hidden)return;
@@ -174,6 +193,12 @@ if(reflectionPdfButton){
     window.addEventListener('afterprint',restoreTitle);
     window.print();
   });
+}
+
+// Keep the purpose-built export document at the body root so print stylesheet excludes all site UI
+const reflectionPrintDocument=document.querySelector('.page-reflection .print-document');
+if(reflectionPrintDocument){
+  document.body.append(reflectionPrintDocument);
 }
 
 const profileNameButton=document.querySelector('#profile-name-button');
@@ -257,6 +282,7 @@ document.addEventListener('keydown',(event)=>{if(event.key==='Escape'&&!profileI
 document.querySelectorAll('.pdf-import-form').forEach((pdfForm)=>{
   const wordForm=pdfForm.cloneNode(true);
   wordForm.classList.add('word-import-form');
+  wordForm.classList.remove('pdf-import-form');
   const action=wordForm.querySelector('input[name="action"]');
   const input=wordForm.querySelector('input[type="file"]');
   const label=wordForm.querySelector('label span');
@@ -266,12 +292,89 @@ document.querySelectorAll('.pdf-import-form').forEach((pdfForm)=>{
   pdfForm.after(wordForm);
 });
 
-document.querySelectorAll('.pdf-import-form input[type="file"]').forEach((input)=>{
-  input.addEventListener('change',()=>{
-    const label=input.closest('label')?.querySelector('span');
-    if(label)label.textContent=input.files?.[0]?.name||(input.name==='word'?'Import Word (.docx)':'Import PDF');
+// Floating Centered Save Action Bar Component
+(function initCenteredSaveBar(){
+  const saveBar=document.createElement('div');
+  saveBar.className='centered-save-bar no-print';
+  saveBar.setAttribute('aria-live','polite');
+  saveBar.hidden=true;
+  saveBar.innerHTML='<div class="save-bar-inner"><span class="save-bar-indicator"><span class="save-bar-dot"></span></span><span class="save-bar-message">Unsaved changes detected</span><div class="save-bar-actions"><button type="button" class="save-bar-cancel">Cancel</button><button type="button" class="save-bar-submit">Save Changes</button></div></div>';
+  document.body.append(saveBar);
+
+  const messageEl=saveBar.querySelector('.save-bar-message');
+  const submitBtn=saveBar.querySelector('.save-bar-submit');
+  const cancelBtn=saveBar.querySelector('.save-bar-cancel');
+  let activeForm=null;
+
+  function showSaveBar(message,targetForm,btnText='Save Changes'){
+    activeForm=targetForm;
+    if(messageEl)messageEl.textContent=message;
+    if(submitBtn)submitBtn.textContent=btnText;
+    saveBar.hidden=false;
+    requestAnimationFrame(()=>saveBar.classList.add('is-visible'));
+  }
+
+  function hideSaveBar(){
+    saveBar.classList.remove('is-visible');
+    window.setTimeout(()=>{
+      if(!saveBar.classList.contains('is-visible')){
+        saveBar.hidden=true;
+        if(activeForm){
+          activeForm.classList.remove('has-file-selected');
+          activeForm=null;
+        }
+      }
+    },220);
+  }
+
+  submitBtn?.addEventListener('click',()=>{
+    if(activeForm){
+      if(typeof activeForm.requestSubmit==='function')activeForm.requestSubmit();
+      else activeForm.submit();
+    }
   });
-});
+
+  cancelBtn?.addEventListener('click',()=>{
+    if(activeForm){
+      activeForm.reset();
+      activeForm.querySelectorAll('input[type="file"]').forEach((input)=>{
+        const label=input.closest('label')?.querySelector('span');
+        if(label)label.textContent=input.name==='word'?'Import Word (.docx)':'Import PDF';
+      });
+      activeForm.classList.remove('has-file-selected');
+    }
+    hideSaveBar();
+  });
+
+  // Track file selections in PDF/Word import forms
+  document.addEventListener('change',(event)=>{
+    const fileInput=event.target.closest('.pdf-import-form input[type="file"], .word-import-form input[type="file"]');
+    if(fileInput){
+      const form=fileInput.closest('form');
+      const file=fileInput.files?.[0];
+      const cardTitle=form?.closest('.admin-content-card')?.querySelector('h2')?.textContent.trim()||'Document';
+      const label=fileInput.closest('label')?.querySelector('span');
+      if(file){
+        if(label)label.textContent='✓ '+file.name;
+        form?.classList.add('has-file-selected');
+        showSaveBar(`File selected for ${cardTitle}: "${file.name}"`,form,'Save & Upload');
+      }else{
+        if(label)label.textContent=fileInput.name==='word'?'Import Word (.docx)':'Import PDF';
+        form?.classList.remove('has-file-selected');
+        hideSaveBar();
+      }
+    }
+  });
+
+  // Track input edits in editor pages
+  document.addEventListener('input',(event)=>{
+    const editInput=event.target.closest('.document-edit-page form input, .document-edit-page form textarea, .document-edit-page form select');
+    if(editInput){
+      const form=editInput.closest('form');
+      if(form)showSaveBar('Unsaved changes in editor',form,'Save Changes');
+    }
+  });
+})();
 
 document.querySelectorAll('a[download]').forEach((link)=>{
   if(link.textContent.trim()!=='Download uploaded Word file')return;

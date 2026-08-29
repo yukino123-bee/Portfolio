@@ -114,8 +114,8 @@ final class PortfolioController
             }
         }
         if ($action === 'layout') {
-            $statement = db()->prepare('UPDATE document_layouts SET resume_template=?,reflection_template=?,font_family=?,font_size=?,line_height=?,section_spacing=? WHERE id=1');
-            $statement->execute([$_POST['resume_template'],$_POST['reflection_template'],$_POST['font_family'],(float)$_POST['font_size'],(float)$_POST['line_height'],(int)$_POST['section_spacing']]);
+            $statement = db()->prepare("UPDATE document_layouts SET resume_template='classic',reflection_template='academic',font_family='Times New Roman',font_size=12.0,line_height=1.50,section_spacing=16 WHERE id=1");
+            $statement->execute();
             $this->redirect('layouts');
         }
         if ($action === 'create') {
