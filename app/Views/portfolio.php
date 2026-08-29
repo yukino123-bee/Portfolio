@@ -3,9 +3,32 @@ declare(strict_types=1);
 
 function e(mixed $value): string { return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8'); }
 function tags(array $items): void { echo '<div class="flex flex-wrap gap-2">'; foreach ($items as $item) echo '<span class="tag">'.e($item).'</span>'; echo '</div>'; }
-?><!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title><?=e(ucfirst(str_replace('_',' ',$page)))?> — Portfolio</title><meta name="description" content="Developer portfolio, current systems, projects, activities, resume, and reflections."><script>try{const saved=localStorage.getItem('portfolio-theme');document.documentElement.dataset.theme=saved||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light')}catch(error){}</script><style>html{background:#fff}html[data-theme="dark"]{background:#101112}</style><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;500;600;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="/assets/style.css"></head><body class="page-<?=e($page)?> bg-white text-black antialiased">
-<aside class="sidebar no-print"><a href="/" class="sidebar-name"><?=e($profile['name']??'Cagatin Mark Jed')?></a><button id="menu-button" class="sidebar-menu-button" aria-expanded="false" aria-controls="mobile-menu">Menu</button><nav id="mobile-menu" class="sidebar-nav hidden"><a href="/" class="<?=$page==='home'?'active':''?>">Home</a><details class="sidebar-dropdown" <?=in_array($page,['activities','activity','reflections','reflection','resume'],true)?'open':''?>><summary class="<?=in_array($page,['activities','activity','reflections','reflection','resume'],true)?'active':''?>">Activities <span aria-hidden="true">⌄</span></summary><div class="sidebar-submenu"><a href="/?page=reflections" class="<?=in_array($page,['reflections','reflection'],true)?'active':''?>">Reflections</a><a href="/?page=resume" class="<?=$page==='resume'?'active':''?>">Resume</a></div></details><?php if(owner_logged_in()):?><a href="/?page=admin">Edit portfolio</a><?php endif;?></nav><div class="active-viewers" aria-live="polite"><span class="active-viewers-dot" aria-hidden="true"></span><svg class="active-viewers-eye" aria-hidden="true" viewBox="0 0 24 24"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"/><circle cx="12" cy="12" r="2.75"/></svg><span><strong id="active-view-count">—</strong> active now</span></div></aside>
-<main class="app-main">
+?><!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title><?=e(ucfirst(str_replace('_',' ',$page)))?> — Portfolio</title><meta name="description" content="Developer portfolio, current systems, projects, activities, resume, and reflections."><script>try{const saved=localStorage.getItem('portfolio-theme');document.documentElement.dataset.theme=saved||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light')}catch(error){}</script><style>html{background:#101112}html[data-theme="light"]{background:#f8fafc}</style><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet"><link rel="stylesheet" href="/assets/style.css"></head><body class="page-<?=e($page)?> bg-white text-black antialiased">
+<header class="site-header no-print">
+  <div class="site-width header-inner">
+    <a href="/" class="brand-logo">
+      <span class="brand-dot"></span>
+      <span class="brand-name"><?=e($profile['name']??'Cagatin Mark Jed')?></span>
+      <span class="brand-tag">BSIT 4th Year</span>
+    </a>
+    <nav class="top-menu" aria-label="Main Navigation">
+      <a href="/" class="<?=$page==='home'?'active':''?>">Home</a>
+      <a href="/?page=reflections" class="<?=in_array($page,['reflections','reflection'],true)?'active':''?>">Reflections</a>
+      <a href="/?page=resume" class="<?=$page==='resume'?'active':''?>">Resume</a>
+      <?php if(owner_logged_in()):?>
+      <a href="/?page=admin" class="<?=$page==='admin'?'active':''?>">Admin</a>
+      <?php endif;?>
+    </nav>
+    <div class="header-right">
+      <div class="active-viewers" aria-live="polite">
+        <span class="active-viewers-dot" aria-hidden="true"></span>
+        <span><strong id="active-view-count">—</strong> active now</span>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main class="app-main site-width">
 <?php if($page==='home'):?>
 <?php
 $contactLinks=[];
@@ -17,8 +40,143 @@ $profileSocials=[
     'email'=>'mailto:'.($contact['email']??'cagatinmark26@gmail.com'),
 ];
 ?>
-<section class="hero-texture"><div class="site-width landing-profile py-20"><div class="profile-portrait"><div class="profile-photo"><img src="/assets/profile-photo.png" alt="Portrait of Cagatin Mark Jed"></div><nav class="profile-socials" aria-label="Social links"><?php foreach($profileSocials as $label=>$url):?><a href="<?=e($url)?>" target="_blank" rel="noreferrer" aria-label="<?=e($label)?>"><?=e($label)?><span aria-hidden="true">↗</span></a><?php endforeach;?></nav></div><div class="profile-intro"><p class="label"><?=e($profile['role']??'Full-Stack Developer')?></p><div class="profile-name-wrap mt-4"><h1><button id="profile-name-button" class="profile-name-button text-5xl font-semibold tracking-[-.05em]" type="button" aria-expanded="false" aria-controls="profile-full-info"><?=e($profile['name']??'Cagatin Mark Jed')?></button></h1><span class="name-tap-cursor" aria-hidden="true">☝</span></div><div id="profile-full-info" class="profile-full-info" hidden><p class="label">Full information</p><dl><div><dt>Name</dt><dd><?=e($profile['full_name']??'Mark Jed M. Cagatin')?></dd></div><div><dt>Age</dt><dd><?=e($profile['age']??'21')?></dd></div><div><dt>Birthdate</dt><dd><?=e($profile['birthdate']??'March 11, 2005')?></dd></div><div><dt>School</dt><dd><?=e($profile['school']??'JH Cerilles State College')?></dd></div><div><dt>Course &amp; Year</dt><dd><?=e($profile['course_year']??'Bachelor of Information Technology — 4th Year')?></dd></div><div><dt>Dream Job</dt><dd><?=e($profile['dream_job']??'Developer')?></dd></div></dl></div><p class="mt-5 max-w-xl text-lg text-neutral-600"><?=e($profile['intro']??'')?></p><p class="mt-3 max-w-xl text-neutral-600"><?=e($profile['biography']??'')?></p><div class="profile-meta"><span><?=e($profile['location']??'Metro Manila, Philippines')?></span><span><?=e($profile['availability']??'Open to collaborations')?></span></div><div class="mt-6"><?php tags($profile['skills']??[]);?></div></div><article class="current-work"><div class="section-heading"><span>01</span><p class="label">Currently building</p></div><p class="current-work-placeholder">Coming soon</p></article></div></section>
-<section class="site-width certificates-section" aria-labelledby="certificates-title"><div class="section-heading"><span>03</span><p class="label" id="certificates-title">Certificates</p></div><div class="certificates-grid"><a class="certificate-card" href="/uploads/certificates/cyberian-fest-hackathon-2026.png" target="_blank" rel="noreferrer"><div class="certificate-preview certificate-preview-rotated"><img src="/uploads/certificates/cyberian-fest-hackathon-2026.png" alt="Certificate of Recognition for first place in the Cyberian Fest 2026 Hackathon"></div><div class="certificate-details"><p class="certificate-kind">Certificate of Recognition</p><h2>1st Place — Cyberian Fest Hackathon</h2><p>JH Cerilles State College · May 8, 2026</p><span>View certificate ↗</span></div></a><a class="certificate-card" href="/uploads/certificates/flowcharting-cpp-programming-2026.pdf" target="_blank" rel="noreferrer"><div class="certificate-preview"><img src="/uploads/certificates/flowcharting-cpp-programming-2026.png" alt="Certificate of Attendance for Introduction to Flowcharting and C++ Programming"></div><div class="certificate-details"><p class="certificate-kind">Certificate of Attendance</p><h2>Introduction to Flowcharting &amp; C++ Programming</h2><p>Project Tuklas Teknolohiya · August 16, 2026</p><span>View certificate ↗</span></div></a></div></section>
+<!-- Big Center Hero Profile Section -->
+<section class="hero-center-section py-12">
+  <div class="hero-profile-card">
+    <div class="hero-portrait-wrap">
+      <img src="/assets/profile-photo.png" alt="Portrait of Cagatin Mark Jed" class="hero-portrait-img">
+    </div>
+    <div class="hero-info-content">
+      <div class="hero-role-badge"><?=e($profile['role']??'Full-Stack Developer')?></div>
+      <h1 class="hero-name mt-3">
+        <button id="profile-name-button" class="profile-name-button text-4xl font-bold" type="button" aria-expanded="false" aria-controls="profile-full-info">
+          <?=e($profile['name']??'Cagatin Mark Jed')?>
+        </button>
+      </h1>
+
+      <div id="profile-full-info" class="profile-full-info" hidden>
+        <p class="label">Full Information</p>
+        <dl>
+          <div><dt>Name</dt><dd><?=e($profile['full_name']??'Mark Jed M. Cagatin')?></dd></div>
+          <div><dt>Age</dt><dd><?=e($profile['age']??'21')?></dd></div>
+          <div><dt>Birthdate</dt><dd><?=e($profile['birthdate']??'March 11, 2005')?></dd></div>
+          <div><dt>School</dt><dd><?=e($profile['school']??'JH Cerilles State College')?></dd></div>
+          <div><dt>Course &amp; Year</dt><dd><?=e($profile['course_year']??'Bachelor of Information Technology — 4th Year')?></dd></div>
+          <div><dt>Dream Job</dt><dd><?=e($profile['dream_job']??'Developer')?></dd></div>
+        </dl>
+      </div>
+
+      <p class="hero-intro-text text-lg mt-4"><?=e($profile['intro']??'')?></p>
+      <p class="hero-bio-text text-sm mt-3"><?=e($profile['biography']??'')?></p>
+
+      <div class="hero-meta-row mt-4">
+        <span class="meta-item">📍 <?=e($profile['location']??'Metro Manila, Philippines')?></span>
+        <span class="meta-item">🟢 <?=e($profile['availability']??'Open to collaborations')?></span>
+      </div>
+
+<?php
+$socialIcons = [
+  'facebook' => '<svg class="social-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>',
+  'github' => '<svg class="social-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>',
+  'linkedin' => '<svg class="social-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/></svg>',
+  'email' => '<svg class="social-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M0 3v18h24v-18h-24zm21.518 2l-9.518 7.713-9.518-7.713h19.036zm-19.518 14v-11.817l10 8.104 10-8.104v11.817h-20z"/></svg>'
+];
+?>
+      <div class="hero-social-links mt-6">
+        <?php foreach($profileSocials as $label=>$url):?>
+          <a href="<?=e($url)?>" target="_blank" rel="noreferrer" class="social-link-btn" aria-label="<?=e($label)?>">
+            <?=$socialIcons[strtolower($label)]??''?>
+            <span><?=e(ucfirst($label))?></span><span aria-hidden="true">↗</span>
+          </a>
+        <?php endforeach;?>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Currently Building Section -->
+<section class="currently-building-section py-8">
+  <div class="section-heading mb-6">
+    <span>01</span>
+    <h2 class="text-2xl font-bold">Currently Building</h2>
+  </div>
+  <div class="building-cards-grid">
+    <!-- Empty Building Card 1 -->
+    <div class="building-card empty-plus-card">
+      <div class="plus-icon-wrap">
+        <span class="plus-icon">+</span>
+      </div>
+      <span class="coming-soon-label mt-3">Coming Soon</span>
+    </div>
+
+    <!-- Empty Building Card 2 -->
+    <div class="building-card empty-plus-card">
+      <div class="plus-icon-wrap">
+        <span class="plus-icon">+</span>
+      </div>
+      <span class="coming-soon-label mt-3">Coming Soon</span>
+    </div>
+
+    <!-- Empty Building Card 3 -->
+    <div class="building-card empty-plus-card">
+      <div class="plus-icon-wrap">
+        <span class="plus-icon">+</span>
+      </div>
+      <span class="coming-soon-label mt-3">Coming Soon</span>
+    </div>
+  </div>
+</section>
+
+<!-- Technologies & Skills Section -->
+<section class="skills-section pt-12 pb-6 mt-6">
+  <div class="clean-card skills-card">
+    <div class="skills-header-row">
+      <div>
+        <span class="card-label">Technical Stack &amp; Expertise</span>
+        <h3 class="text-xl font-bold mt-1">Skills &amp; Environment</h3>
+      </div>
+      <div class="environment-badge">
+        <span class="env-dot"></span>
+        <span>Fedora Linux Workstation</span>
+      </div>
+    </div>
+
+    <div class="skills-tags-wrap mt-4">
+      <?php tags($profile['skills']??[]);?>
+    </div>
+  </div>
+</section>
+
+<section class="certificates-section py-10" aria-labelledby="certificates-title">
+  <div class="section-heading mb-6">
+    <span>02</span>
+    <h2 class="text-2xl font-bold" id="certificates-title">Certificates &amp; Awards</h2>
+  </div>
+  <div class="certificates-grid">
+    <a class="certificate-card" href="/uploads/certificates/cyberian-fest-hackathon-2026.png" target="_blank" rel="noreferrer">
+      <div class="certificate-preview certificate-preview-rotated">
+        <img src="/uploads/certificates/cyberian-fest-hackathon-2026.png" alt="Certificate of Recognition for first place in the Cyberian Fest 2026 Hackathon">
+      </div>
+      <div class="certificate-details">
+        <p class="certificate-kind">Certificate of Recognition</p>
+        <h2>1st Place — Cyberian Fest Hackathon</h2>
+        <p>JH Cerilles State College · May 8, 2026</p>
+        <span>View certificate ↗</span>
+      </div>
+    </a>
+    <a class="certificate-card" href="/uploads/certificates/flowcharting-cpp-programming-2026.pdf" target="_blank" rel="noreferrer">
+      <div class="certificate-preview">
+        <img src="/uploads/certificates/flowcharting-cpp-programming-2026.png" alt="Certificate of Attendance for Introduction to Flowcharting and C++ Programming">
+      </div>
+      <div class="certificate-details">
+        <p class="certificate-kind">Certificate of Attendance</p>
+        <h2>Introduction to Flowcharting &amp; C++ Programming</h2>
+        <p>Project Tuklas Teknolohiya · August 16, 2026</p>
+        <span>View certificate ↗</span>
+      </div>
+    </a>
+  </div>
+</section>
 <?php elseif($page==='about'):?>
 <?php page_head('About','Curious by nature. Deliberate in practice.',$profile['biography']??'');?><section class="site-width grid gap-10 py-16 md:grid-cols-[1fr_320px]"><div><h2 class="text-3xl font-semibold">Current system</h2><h3 class="mt-6 text-2xl"><?=e($system['name']??'')?></h3><p class="mt-3 text-neutral-600"><?=e($system['description']??'')?></p><p class="mt-6"><strong>Current focus:</strong> <?=e($system['current_focus']??'')?></p><p><strong>Next milestone:</strong> <?=e($system['next_milestone']??'')?></p></div><aside class="panel"><p class="label">Skills</p><div class="mt-5"><?php tags($profile['skills']??[]);?></div></aside></section>
 <?php elseif($page==='activities'):?>

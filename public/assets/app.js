@@ -3,7 +3,7 @@ themeToggle.type='button';
 themeToggle.className='theme-toggle no-print';
 themeToggle.setAttribute('aria-label','Switch color theme');
 themeToggle.innerHTML='<span class="theme-sun" aria-hidden="true">☀</span><span class="theme-moon" aria-hidden="true">☾</span>';
-document.body.append(themeToggle);
+(document.querySelector('.header-right')||document.body).append(themeToggle);
 const languageCloud=document.createElement('aside');
 languageCloud.className='language-cloud no-print';
 languageCloud.setAttribute('aria-label','Programming technologies');
